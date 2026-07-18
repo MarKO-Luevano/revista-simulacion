@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIMULACIÓN — Revista de Lenguajes y Software de Simulación</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Special+Elite&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --stage-bg:#141210;
+    --page-bg:#faf6ea;
+    --page-bg-alt:#f1ead4;
+    --ink:#231f19;
+    --ink-soft:#5c5646;
+    --rule:#d9cfb0;
+    --brass:#b5904f;
+    --brass-light:#dcb877;
+    --red:#a13a3a;
+    --blue:#2f4d6b;
+    --green:#3f6a59;
+    --cover-bg:#1c1a16;
+    --cover-ink:#f4eeda;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.05), transparent 55%), var(--stage-bg);
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+
+  .topbar{
+    display:flex; align-items:center; gap:16px; padding:14px 22px;
+    border-bottom:1px solid #2a2620; flex-wrap:wrap;
+  }
+  .topbar-brand{ font-family:'Bebas Neue', sans-serif; font-size:22px; letter-spacing:0.06em; color:var(--cover-ink); }
+  .topbar-issue{ font-size:10.5px; letter-spacing:0.05em; color:#8a806a; }
+  .topbar-search{ margin-left:auto; position:relative; min-width:180px; }
+  .topbar-search input{
+    width:100%; font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+    background:#211d18; border:1px solid #3a332a; color:#e9e0c8;
+    padding:7px 10px; border-radius:2px; outline:none;
+  }
+  .topbar-search input::placeholder{ color:#7a705a; }
+  .topbar-search input:focus{ border-color:var(--brass); }
+
+  .stage-wrap{ flex:1; display:flex; align-items:center; justify-content:center; padding:26px 16px; }
+  .stage{ position:relative; width:min(94vw, 760px); height:clamp(560px, 82vh, 900px); perspective:2400px; }
+
+  .page{
+    position:absolute; inset:0; background:var(--page-bg); border-radius:3px;
+    box-shadow:0 24px 60px -16px rgba(0,0,0,0.65), 0 2px 0 rgba(255,255,255,0.5) inset;
+    overflow-y:auto; overflow-x:hidden; visibility:hidden; opacity:0; pointer-events:none;
+    transform:rotateY(0deg); backface-visibility:hidden;
+    transition:transform .5s cubic-bezier(.45,0,.2,1), opacity .5s ease;
+  }
+  .page.active{ visibility:visible; opacity:1; pointer-events:auto; z-index:2; }
+  .page-pad{ padding:40px 42px 30px; min-height:100%; }
+  .folio{ text-align:center; font-size:10px; letter-spacing:0.15em; color:#9a8f70; margin-top:34px; text-transform:uppercase; }
+
+  .dogear{
+    position:absolute; bottom:0; width:42px; height:42px; z-index:6; cursor:pointer;
+    display:flex; align-items:flex-end; font-family:'IBM Plex Mono', monospace; font-size:13px; color:#a89f8a;
+  }
+  .dogear-next{ right:0; clip-path:polygon(100% 100%, 100% 0, 0 100%); background:linear-gradient(135deg, transparent 55%, rgba(0,0,0,0.07) 55%); justify-content:flex-end; padding:0 9px 8px 0; }
+  .dogear-prev{ left:0; clip-path:polygon(0 100%, 0 0, 100% 100%); background:linear-gradient(-135deg, transparent 55%, rgba(0,0,0,0.07) 55%); justify-content:flex-start; padding:0 0 8px 9px; }
+  .dogear:hover{ color:var(--red); }
+
+  .navbar{ display:flex; align-items:center; justify-content:center; gap:10px; padding:14px 16px 20px; flex-wrap:wrap; }
+  .navbar button{
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px; letter-spacing:0.03em; color:#f1e9d4;
+    background:#2a241f; border:1px solid #3a332a; padding:8px 14px; border-radius:2px; cursor:pointer;
+    transition:background .15s, border-color .15s;
+  }
+  .navbar button:hover:not(:disabled){ border-color:var(--brass); }
+  .navbar button:disabled{ opacity:0.35; cursor:default; }
+  .page-counter{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#a89f8a; padding:0 6px; }
+
+  .kicker{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:var(--red); margin:0 0 8px; }
+  .kicker.blue{ color:var(--blue); }
+  .kicker.green{ color:var(--green); }
+  h2.headline{ font-family:'Bebas Neue', sans-serif; font-weight:400; letter-spacing:0.01em; line-height:0.98; color:var(--ink); margin:0 0 10px; font-size:clamp(28px, 6vw, 42px); }
+  .dek{ font-family:'Lora', serif; font-style:italic; font-size:14px; color:var(--ink-soft); margin:0 0 20px; line-height:1.5; border-bottom:1px solid var(--rule); padding-bottom:16px; }
+  .byline{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#9a8f70; margin:0 0 20px; letter-spacing:0.03em; }
+  .lede{ font-family:'Lora', serif; font-size:15px; line-height:1.7; color:var(--ink); margin:0 0 24px; }
+  .lede::first-letter{ font-family:'Bebas Neue', sans-serif; font-size:52px; line-height:0.8; float:left; margin:6px 6px 0 0; color:var(--red); }
+  p.body-text{ font-family:'Lora', serif; font-size:13.5px; line-height:1.68; color:var(--ink); margin:0 0 10px; }
+
+  /* ---------- Portada ---------- */
+  .cover{ background:var(--cover-bg); color:var(--cover-ink); }
+  .cover .page-pad{ display:flex; flex-direction:column; height:100%; padding:34px 34px 24px; }
+  .cover-masthead{ font-family:'Bebas Neue', sans-serif; font-size:clamp(56px, 13vw, 86px); letter-spacing:0.02em; text-align:center; line-height:0.9; margin:10px 0 2px; }
+  .cover-tagline{ text-align:center; font-family:'Lora', serif; font-style:italic; font-size:13px; color:#cabf9f; margin-bottom:18px; }
+  .cover-issue-row{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.05em; color:#a89f8a; border-top:1px solid #3a332a; border-bottom:1px solid #3a332a; padding:8px 2px; margin-bottom:22px; }
+  .cover-art{ display:flex; justify-content:center; gap:22px; margin:4px 0 22px; opacity:0.9; }
+  .cover-lines{ flex:1; display:flex; flex-direction:column; gap:13px; justify-content:center; }
+  .cover-line{ font-family:'Bebas Neue', sans-serif; letter-spacing:0.01em; line-height:1.05; border-left:3px solid var(--brass); padding-left:12px; }
+  .cover-line.big{ font-size:23px; }
+  .cover-line.mid{ font-size:17px; color:#dcd3ba; }
+  .cover-line.small{ font-size:14px; color:#b8ae94; }
+  .cover-footer{ display:flex; justify-content:space-between; align-items:flex-end; margin-top:18px; font-family:'IBM Plex Mono', monospace; font-size:9px; color:#7a705a; letter-spacing:0.06em; }
+  .barcode{ display:flex; gap:2px; align-items:flex-end; height:28px; }
+  .barcode span{ display:block; width:2px; background:#cabf9f; }
+
+  /* ---------- Índice ---------- */
+  .toc-row{ display:flex; gap:14px; align-items:baseline; padding:10px 0; border-bottom:1px dashed var(--rule); cursor:pointer; }
+  .toc-row:hover .toc-title{ color:var(--red); }
+  .toc-num{ font-family:'Bebas Neue', sans-serif; font-size:20px; color:var(--brass); width:30px; flex:0 0 auto; }
+  .toc-body{ flex:1; }
+  .toc-tag{ font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--red); display:block; margin-bottom:2px; }
+  .toc-title{ font-family:'Lora', serif; font-weight:600; font-size:13.5px; color:var(--ink); transition:color .15s; }
+
+  /* ---------- Ads ---------- */
+  .ad{ border:3px double var(--ink); padding:26px 24px; text-align:center; min-height:70%; display:flex; flex-direction:column; justify-content:center; }
+  .ad .kicker{ justify-content:center; text-align:center; }
+  .ad-headline{ font-family:'Bebas Neue', sans-serif; font-size:clamp(26px, 6vw, 38px); line-height:1; margin:6px 0 10px; }
+  .ad-sub{ font-family:'Lora', serif; font-style:italic; font-size:13.5px; color:var(--ink-soft); margin-bottom:16px; }
+  .ad-body{ font-family:'Lora', serif; font-size:13px; line-height:1.7; max-width:440px; margin:0 auto 18px; }
+  .ad-cta{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.05em; color:var(--red); border-top:1px solid var(--rule); padding-top:14px; margin-top:auto; }
+  .ad-list{ font-family:'Lora', serif; font-size:13px; line-height:1.8; text-align:left; max-width:440px; margin:0 auto 18px; padding-left:20px; }
+
+  /* ---------- Mag items ---------- */
+  .mag-item{ padding:18px 0; border-bottom:1px solid var(--rule); }
+  .mag-item:last-child{ border-bottom:none; }
+  .mag-num{ font-family:'Bebas Neue', sans-serif; font-size:26px; color:var(--brass); line-height:1; display:inline-block; margin-right:8px; }
+  .mag-body h3{ font-family:'Lora', serif; font-weight:600; font-size:16.5px; margin:6px 0 3px; color:var(--ink); }
+  .mag-meta{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:#9a8f70; margin-bottom:8px; }
+  .mag-history{ font-family:'Lora', serif; font-size:12.5px; line-height:1.62; color:var(--ink-soft); margin:8px 0 10px; }
+  .mag-history .label{ font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--brass); display:block; margin-bottom:3px; }
+  .pros-cons{ display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin:10px 0; }
+  .pros-cons h5{ font-family:'IBM Plex Mono', monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; margin:0 0 5px; }
+  .pros-cons .pros h5{ color:var(--green); }
+  .pros-cons .cons h5{ color:var(--red); }
+  .pros-cons ul{ list-style:none; margin:0; padding:0; }
+  .pros-cons li{ font-family:'IBM Plex Mono', monospace; font-size:10.2px; color:#4a4536; margin-bottom:4px; padding-left:13px; position:relative; line-height:1.4; }
+  .pros-cons .pros li::before{ content:"+"; position:absolute; left:0; color:var(--green); font-weight:bold; }
+  .pros-cons .cons li::before{ content:"–"; position:absolute; left:0; color:var(--red); font-weight:bold; }
+  ul.mag-features{ list-style:none; margin:8px 0 10px; padding:0; }
+  ul.mag-features li{ font-family:'IBM Plex Mono', monospace; font-size:10.2px; color:#4a4536; margin-bottom:4px; padding-left:14px; position:relative; }
+  ul.mag-features li::before{ content:"—"; position:absolute; left:0; color:var(--brass); }
+  .mag-foot{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:6px; }
+  .stamp2{ display:inline-block; font-family:'Special Elite', monospace; font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 8px; border:2px solid; border-radius:3px; transform:rotate(-4deg); mix-blend-mode:multiply; opacity:0.85; }
+  .stamp2.active{ color:var(--green); border-color:var(--green); }
+  .stamp2.legacy{ color:var(--red); border-color:var(--red); }
+  .stamp2.oss{ color:var(--blue); border-color:var(--blue); }
+  .vidlink{ display:inline-flex; align-items:center; gap:5px; font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--blue); text-decoration:none; border-bottom:1px solid transparent; }
+  .vidlink:hover{ border-bottom-color:var(--blue); }
+  .vidlink svg{ width:11px; height:11px; }
+
+  .code-block{ background:#211d18; color:#dcd3ba; font-family:'IBM Plex Mono', monospace; font-size:10.4px; line-height:1.5; padding:11px 12px; border-radius:2px; overflow-x:auto; margin:6px 0 10px; white-space:pre; border:1px solid #3a332a; }
+  .code-block .cm{ color:#8a806a; }
+
+  /* ---------- Timeline ---------- */
+  .timeline{ position:relative; margin-left:8px; padding-left:22px; border-left:2px solid var(--rule); }
+  .tl-item{ position:relative; padding-bottom:20px; }
+  .tl-item::before{ content:""; position:absolute; left:-28px; top:3px; width:11px; height:11px; border-radius:50%; background:var(--brass); border:2px solid var(--page-bg); box-shadow:0 0 0 1.5px var(--brass); }
+  .tl-year{ font-family:'Bebas Neue', sans-serif; font-size:20px; color:var(--red); line-height:1; }
+  .tl-label{ font-family:'Lora', serif; font-size:12.5px; color:var(--ink); line-height:1.5; }
+
+  /* ---------- Donut chart ---------- */
+  .donut-wrap{ display:flex; align-items:center; gap:26px; flex-wrap:wrap; justify-content:center; margin:20px 0; }
+  .donut{ width:180px; height:180px; border-radius:50%; position:relative; flex:0 0 auto; }
+  .donut::after{ content:""; position:absolute; inset:26px; border-radius:50%; background:var(--page-bg); }
+  .donut-legend{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; line-height:2; }
+  .donut-legend span.sw{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:8px; }
+
+  /* ---------- Tabla comparativa ---------- */
+  table.cmp{ width:100%; border-collapse:collapse; font-family:'IBM Plex Mono', monospace; font-size:10px; }
+  table.cmp th{ text-align:left; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--brass); border-bottom:2px solid var(--ink); padding:6px 6px; }
+  table.cmp td{ padding:6px 6px; border-bottom:1px solid var(--rule); color:var(--ink-soft); vertical-align:top; }
+  table.cmp td.name{ color:var(--ink); font-family:'Lora', serif; font-weight:600; font-size:11px; }
+  table.cmp tr:nth-child(even){ background:var(--page-bg-alt); }
+
+  /* ---------- Glosario / Trivia ---------- */
+  .gloss-item{ margin-bottom:14px; }
+  .gloss-term{ font-family:'Lora', serif; font-weight:600; font-size:13.5px; color:var(--ink); }
+  .gloss-def{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-soft); line-height:1.55; margin-top:2px; }
+  .trivia-list{ list-style:none; margin:0; padding:0; }
+  .trivia-list li{ font-family:'Lora', serif; font-size:13.5px; line-height:1.7; color:var(--ink); padding:12px 0 12px 30px; border-bottom:1px dashed var(--rule); position:relative; }
+  .trivia-list li::before{ content:"?"; position:absolute; left:0; top:10px; font-family:'Bebas Neue', sans-serif; font-size:20px; color:var(--brass); }
+
+  /* ---------- Laboratorio ---------- */
+  .lab-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-top:8px; }
+  .lab-panel{ background:var(--page-bg-alt); border:1px solid var(--rule); border-radius:2px; padding:15px; }
+  .lab-panel h4{ font-family:'Lora', serif; font-weight:600; font-size:14px; margin:0 0 4px; }
+  .lab-panel .lab-desc{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--ink-soft); line-height:1.5; margin:0 0 9px; }
+  .lab-panel canvas{ width:100%; display:block; background:#f4eeda; border:1px solid var(--rule); border-radius:2px; margin-bottom:9px; }
+  .lab-controls{ display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; margin-bottom:8px; }
+  .lab-controls label{ display:flex; flex-direction:column; gap:3px; font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--ink-soft); flex:1 1 90px; }
+  .lab-controls input[type="range"]{ accent-color:var(--brass); width:100%; }
+  .lab-controls input[type="number"]{ font-family:'IBM Plex Mono', monospace; font-size:10px; width:100%; padding:3px 5px; border:1px solid var(--rule); border-radius:2px; background:#fff; color:var(--ink); }
+  .lab-btn{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:#f1e9d4; background:#4a4536; border:none; padding:6px 11px; border-radius:2px; cursor:pointer; margin-right:6px; }
+  .lab-btn:hover{ background:var(--brass); }
+  .lab-readout{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:#4a4536; background:#fff; border:1px dashed var(--rule); border-radius:2px; padding:7px 9px; margin-top:8px; }
+
+  .colophon{ font-family:'Lora', serif; font-size:13px; line-height:1.9; color:var(--ink-soft); }
+  .colophon strong{ color:var(--ink); }
+
+  @media (max-width:560px){
+    .page-pad{ padding:28px 20px 22px; }
+    .topbar{ padding:10px 14px; }
+    .topbar-search{ min-width:0; width:100%; order:3; }
+    .pros-cons{ grid-template-columns:1fr; }
+    table.cmp{ font-size:9px; }
+  }
+  @media (prefers-reduced-motion: reduce){ .page{ transition:none; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-brand">SIMULACIÓN</span>
+  <span class="topbar-issue">N.º 01 · Verano 2026 · Primera Edición</span>
+  <div class="topbar-search"><input type="text" id="tocSearch" placeholder="Buscar en el índice…" autocomplete="off"></div>
+</div>
+
+<div class="stage-wrap"><div class="stage" id="stage">
+
+<!-- ===== 1. PORTADA ===== -->
+<section class="page active cover">
+  <div class="page-pad">
+    <div class="cover-issue-row"><span>N.º 01 · VERANO 2026</span><span>PRIMERA EDICIÓN · 31 PÁGINAS</span></div>
+    <div class="cover-masthead">SIMULA</div>
+    <div class="cover-tagline">la revista de quienes modelan el mundo antes de construirlo</div>
+    <div class="cover-art" aria-hidden="true">
+      <svg width="30" height="30" viewBox="0 0 30 30"><rect x="2" y="2" width="26" height="26" rx="4" fill="none" stroke="#b5904f" stroke-width="1.6"/><circle cx="9" cy="9" r="1.7" fill="#e0bd7c"/><circle cx="21" cy="9" r="1.7" fill="#e0bd7c"/><circle cx="15" cy="15" r="1.7" fill="#e0bd7c"/><circle cx="9" cy="21" r="1.7" fill="#e0bd7c"/><circle cx="21" cy="21" r="1.7" fill="#e0bd7c"/></svg>
+      <svg width="30" height="30" viewBox="0 0 30 30"><g fill="none" stroke="#b5904f" stroke-width="1.6"><circle cx="15" cy="15" r="6.5"/><path d="M15 2v4M15 24v4M2 15h4M24 15h4M5.5 5.5l2.8 2.8M21.7 21.7l2.8 2.8M24.5 5.5l-2.8 2.8M8.3 21.7l-2.8 2.8"/></g></svg>
+      <svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="16" r="10" fill="none" stroke="#b5904f" stroke-width="1.6"/><path d="M12 3h6M15 6v3M15 16l5-3" fill="none" stroke="#b5904f" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <svg width="38" height="27" viewBox="0 0 34 24"><path d="M2 2h26l4 4v16H2z" fill="none" stroke="#b5904f" stroke-width="1.4"/><circle cx="7" cy="8" r="1.1" fill="#e0bd7c"/><circle cx="12" cy="8" r="1.1" fill="#e0bd7c"/><circle cx="17" cy="8" r="1.1" fill="#e0bd7c"/><circle cx="22" cy="8" r="1.1" fill="#e0bd7c"/><circle cx="7" cy="14" r="1.1" fill="#e0bd7c"/><circle cx="17" cy="14" r="1.1" fill="#e0bd7c"/><circle cx="27" cy="14" r="1.1" fill="#e0bd7c"/></svg>
+    </div>
+    <div class="cover-lines">
+      <div class="cover-line big">21 SOFTWARE Y 10 LENGUAJES DE PROGRAMACIÓN<br>historia, ventajas y desventajas de cada uno</div>
+      <div class="cover-line mid">LÍNEA DEL TIEMPO — 67 años de simulación en una sola página</div>
+      <div class="cover-line mid">LABORATORIO — ahora con 5 experimentos</div>
+      <div class="cover-line small">ADEMÁS: glosario, tabla comparativa y trivia</div>
+    </div>
+    <div class="cover-footer">
+      <span>EJEMPLAR DE CORTESÍA · NO APTO PARA VENTA · AUTOR: PEREZ LUEVANO MARCO ANTONIO</span>
+      <div class="barcode" aria-hidden="true"><span style="height:26px"></span><span style="height:18px"></span><span style="height:30px"></span><span style="height:14px"></span><span style="height:24px"></span><span style="height:30px"></span><span style="height:16px"></span><span style="height:22px"></span><span style="height:28px"></span><span style="height:12px"></span><span style="height:26px"></span></div>
+    </div>
+  </div>
+  <span class="dogear dogear-next" data-goto="1">›</span>
+</section>
+
+<!-- ===== 2. ÍNDICE ===== -->
+<section class="page">
+  <div class="page-pad">
+    <p class="kicker">En este número</p>
+    <h2 class="headline">Índice</h2>
+    <div class="dek">Toque cualquier renglón para saltar directo a esa página.</div>
+    <div id="tocList">
+      <div class="toc-row" data-goto="2"><span class="toc-num">03</span><div class="toc-body"><span class="toc-tag">Editorial</span><span class="toc-title">Antes de simular, alguien tuvo que inventar cómo</span></div></div>
+      <div class="toc-row" data-goto="3"><span class="toc-num">04</span><div class="toc-body"><span class="toc-tag">Infografía</span><span class="toc-title">Línea del tiempo: 1959–2024</span></div></div>
+      <div class="toc-row" data-goto="4"><span class="toc-num">05</span><div class="toc-body"><span class="toc-tag">Publicidad</span><span class="toc-title">Semilla &amp; Congruencia</span></div></div>
+      <div class="toc-row" data-goto="5"><span class="toc-num">06</span><div class="toc-body"><span class="toc-tag">Retrospectiva I</span><span class="toc-title">GPSS, SIMULA 67 y SIMSCRIPT</span></div></div>
+      <div class="toc-row" data-goto="6"><span class="toc-num">07</span><div class="toc-body"><span class="toc-tag">Retrospectiva II</span><span class="toc-title">DYNAMO y SLAM II</span></div></div>
+      <div class="toc-row" data-goto="7"><span class="toc-num">08</span><div class="toc-body"><span class="toc-tag">Publicidad</span><span class="toc-title">Clasificados: se busca generador</span></div></div>
+      <div class="toc-row" data-goto="8"><span class="toc-num">09</span><div class="toc-body"><span class="toc-tag">Reportaje I</span><span class="toc-title">Arena, Simio y ProModel</span></div></div>
+      <div class="toc-row" data-goto="9"><span class="toc-num">10</span><div class="toc-body"><span class="toc-tag">Reportaje II</span><span class="toc-title">FlexSim y Plant Simulation</span></div></div>
+      <div class="toc-row" data-goto="10"><span class="toc-num">11</span><div class="toc-body"><span class="toc-tag">Infografía</span><span class="toc-title">Código abierto vs. comercial</span></div></div>
+      <div class="toc-row" data-goto="11"><span class="toc-num">12</span><div class="toc-body"><span class="toc-tag">Publicidad</span><span class="toc-title">Tarjetas perforadas de repuesto</span></div></div>
+      <div class="toc-row" data-goto="12"><span class="toc-num">13</span><div class="toc-body"><span class="toc-tag">Reportaje I</span><span class="toc-title">NetLogo y AnyLogic</span></div></div>
+      <div class="toc-row" data-goto="13"><span class="toc-num">14</span><div class="toc-body"><span class="toc-tag">Reportaje II</span><span class="toc-title">Repast y MASON</span></div></div>
+      <div class="toc-row" data-goto="14"><span class="toc-num">15</span><div class="toc-body"><span class="toc-tag">Publicidad</span><span class="toc-title">Curso relámpago de estado estacionario</span></div></div>
+      <div class="toc-row" data-goto="15"><span class="toc-num">16</span><div class="toc-body"><span class="toc-tag">Reportaje I</span><span class="toc-title">Vensim y Stella</span></div></div>
+      <div class="toc-row" data-goto="16"><span class="toc-num">17</span><div class="toc-body"><span class="toc-tag">Reportaje II</span><span class="toc-title">Powersim e Insight Maker</span></div></div>
+      <div class="toc-row" data-goto="17"><span class="toc-num">18</span><div class="toc-body"><span class="toc-tag">Publicidad</span><span class="toc-title">Cinta perforada para DYNAMO</span></div></div>
+      <div class="toc-row" data-goto="18"><span class="toc-num">19</span><div class="toc-body"><span class="toc-tag">Reportaje I</span><span class="toc-title">MATLAB/Simulink y SimPy</span></div></div>
+      <div class="toc-row" data-goto="19"><span class="toc-num">20</span><div class="toc-body"><span class="toc-tag">Reportaje II</span><span class="toc-title">OpenModelica</span></div></div>
+      <div class="toc-row" data-goto="20"><span class="toc-num">21</span><div class="toc-body"><span class="toc-tag">Publicidad</span><span class="toc-title">Calibración de semillas a domicilio</span></div></div>
+      <div class="toc-row" data-goto="21"><span class="toc-num">22</span><div class="toc-body"><span class="toc-tag">Guía I</span><span class="toc-title">Python, C, C++ y Java</span></div></div>
+      <div class="toc-row" data-goto="22"><span class="toc-num">23</span><div class="toc-body"><span class="toc-tag">Guía II</span><span class="toc-title">C#, R y Julia</span></div></div>
+      <div class="toc-row" data-goto="23"><span class="toc-num">24</span><div class="toc-body"><span class="toc-tag">Guía III</span><span class="toc-title">Fortran, MATLAB y Modelica</span></div></div>
+      <div class="toc-row" data-goto="24"><span class="toc-num">25</span><div class="toc-body"><span class="toc-tag">Publicidad</span><span class="toc-title">En el próximo número</span></div></div>
+      <div class="toc-row" data-goto="25"><span class="toc-num">26</span><div class="toc-body"><span class="toc-tag">Referencia</span><span class="toc-title">Tabla comparativa completa</span></div></div>
+      <div class="toc-row" data-goto="26"><span class="toc-num">27</span><div class="toc-body"><span class="toc-tag">Referencia</span><span class="toc-title">Glosario</span></div></div>
+      <div class="toc-row" data-goto="27"><span class="toc-num">28</span><div class="toc-body"><span class="toc-tag">Trivia</span><span class="toc-title">¿Sabía que…?</span></div></div>
+      <div class="toc-row" data-goto="28"><span class="toc-num">29</span><div class="toc-body"><span class="toc-tag">Publicidad</span><span class="toc-title">Glosario de bolsillo para su familia</span></div></div>
+      <div class="toc-row" data-goto="29"><span class="toc-num">30</span><div class="toc-body"><span class="toc-tag">Especial interactivo</span><span class="toc-title">El laboratorio: 5 experimentos</span></div></div>
+      <div class="toc-row" data-goto="30"><span class="toc-num">31</span><div class="toc-body"><span class="toc-tag">Colofón</span><span class="toc-title">Créditos</span></div></div>
+    </div>
+    <div class="folio">— 02 —</div>
+  </div>
+  <span class="dogear dogear-prev" data-goto="0">‹</span><span class="dogear dogear-next" data-goto="2">›</span>
+</section>
+
+<!-- ===== 3. EDITORIAL ===== -->
+<section class="page">
+  <div class="page-pad">
+    <p class="kicker">Editorial</p>
+    <h2 class="headline">Antes de simular, alguien tuvo que inventar cómo</h2>
+    <div class="byline">Nota del editor</div>
+    <p class="lede">Toda simulación moderna —esa animación 3D de un almacén en FlexSim, ese modelo de agentes epidemiológicos en AnyLogic— desciende de una idea mucho más modesta: representar un sistema con bloques, eventos y números que parecen aleatorios pero no lo son del todo.</p>
+    <p class="body-text">Esta edición extendida reúne sesenta y siete años de esa idea: 21 programas de simulación y 10 lenguajes de programación, cada uno con su historia, sus ventajas y —para que nadie se lleve una sorpresa— sus desventajas también. Añadimos una línea del tiempo, una tabla comparativa, un glosario y algo de trivia, porque una revista que solo cataloga es, en el fondo, un poco aburrida.</p>
+    <p class="body-text">Entre reportaje y reportaje encontrará publicidad — ninguna es real, pero toda está inspirada en chistes que cualquier persona que haya calibrado un generador congruencial reconocerá. Y al final, un laboratorio con cinco experimentos para que deje de leer sobre el tema y, por una vez, lo vea moverse.</p>
+    <div class="folio">— 03 —</div>
+  </div>
+  <span class="dogear dogear-prev" data-goto="1">‹</span><span class="dogear dogear-next" data-goto="3">›</span>
+</section>
+
+<!-- ===== 4. LÍNEA DEL TIEMPO ===== -->
+<section class="page">
+  <div class="page-pad">
+    <p class="kicker blue">Infografía</p>
+    <h2 class="headline">Línea del tiempo</h2>
+    <div class="dek">Sesenta y cinco años de simulación, de las tarjetas perforadas al navegador web.</div>
+    <div class="timeline">
+      <div class="tl-item"><div class="tl-year">1959</div><div class="tl-label"><strong>DYNAMO</strong> — Jay Forrester funda la dinámica de sistemas en el MIT.</div></div>
+      <div class="tl-item"><div class="tl-year">1961</div><div class="tl-label"><strong>GPSS</strong> — Geoffrey Gordon lo crea en IBM para simular centrales telefónicas.</div></div>
+      <div class="tl-item"><div class="tl-year">1963</div><div class="tl-label"><strong>SIMSCRIPT</strong> — RAND Corporation lo desarrolla para logística militar.</div></div>
+      <div class="tl-item"><div class="tl-year">1967</div><div class="tl-label"><strong>SIMULA 67</strong> — Dahl y Nygaard inventan, sin buscarlo, la programación orientada a objetos.</div></div>
+      <div class="tl-item"><div class="tl-year">1972</div><div class="tl-label"><strong>C</strong> — Dennis Ritchie sienta la base de los motores de simulación de alto desempeño.</div></div>
+      <div class="tl-item"><div class="tl-year">1979</div><div class="tl-label"><strong>SLAM II</strong> — Pritsker y Pegden combinan tres paradigmas de modelado en uno.</div></div>
+      <div class="tl-item"><div class="tl-year">1985</div><div class="tl-label"><strong>C++, Vensim y Stella</strong> — el mismo año nacen un lenguaje y dos referentes de la dinámica de sistemas.</div></div>
+      <div class="tl-item"><div class="tl-year">1988</div><div class="tl-label"><strong>ProModel</strong> — Utah se convierte en un polo de simulación de manufactura.</div></div>
+      <div class="tl-item"><div class="tl-year">1991</div><div class="tl-label"><strong>Python</strong> — Guido van Rossum lo publica; tres décadas después sería el lenguaje más usado en simulación.</div></div>
+      <div class="tl-item"><div class="tl-year">1993</div><div class="tl-label"><strong>Arena, FlexSim y R</strong> — el software DES comercial y la estadística libre despegan el mismo año.</div></div>
+      <div class="tl-item"><div class="tl-year">1995</div><div class="tl-label"><strong>Java</strong> — "compile una vez, corra en cualquier lado" se vuelve el motor de media docena de simuladores de agentes.</div></div>
+      <div class="tl-item"><div class="tl-year">1999</div><div class="tl-label"><strong>NetLogo</strong> — Uri Wilensky lo lanza en Northwestern, pensado para el salón de clases.</div></div>
+      <div class="tl-item"><div class="tl-year">2000</div><div class="tl-label"><strong>AnyLogic y C#</strong> — nace el primer simulador verdaderamente multimétodo, y Microsoft presenta C#.</div></div>
+      <div class="tl-item"><div class="tl-year">2001</div><div class="tl-label"><strong>Repast</strong> — Argonne National Laboratory libera su plataforma de agentes.</div></div>
+      <div class="tl-item"><div class="tl-year">2003</div><div class="tl-label"><strong>MASON</strong> — George Mason y Michigan buscan velocidad sobre facilidad de uso.</div></div>
+      <div class="tl-item"><div class="tl-year">2007</div><div class="tl-label"><strong>Simio</strong> — Dennis Pegden reinventa, por segunda vez, el software de eventos discretos.</div></div>
+      <div class="tl-item"><div class="tl-year">2010</div><div class="tl-label"><strong>Insight Maker</strong> — la dinámica de sistemas llega gratis al navegador.</div></div>
+      <div class="tl-item"><div class="tl-year">2012</div><div class="tl-label"><strong>Julia</strong> — el MIT intenta cerrar la brecha entre Python y C.</div></div>
+      <div class="tl-item"><div class="tl-year">2024</div><div class="tl-label"><strong>FlexSim</strong> — Autodesk adquiere la compañía, tres décadas después de su fundación.</div></div>
+    </div>
+    <div class="folio">— 04 —</div>
+  </div>
+  <span class="dogear dogear-prev" data-goto="2">‹</span><span class="dogear dogear-next" data-goto="4">›</span>
+</section>
+
+<!-- ===== 5. ANUNCIO 1 ===== -->
+<section class="page"><div class="page-pad">
+  <div class="ad">
+    <p class="kicker">Publicidad</p>
+    <div class="ad-headline">SEMILLA &amp; CONGRUENCIA</div>
+    <div class="ad-sub">El boletín quincenal para quien todavía revisa si su generador tiene buen periodo.</div>
+    <p class="ad-body">Cada catorce días, directo a su bandeja de entrada: rachas de números que parecen aleatorios, pruebas de uniformidad que sí importan, y una sección de cartas donde los lectores confiesan haber usado la hora del sistema como semilla.</p>
+    <div class="ad-cta">SUSCRIPCIÓN GRATUITA — CUPO LIMITADO A QUIENES YA PERDIERON UNA TARDE CALIBRANDO UN LCG</div>
+  </div>
+  <div class="folio">— 05 —</div>
+</div><span class="dogear dogear-prev" data-goto="3">‹</span><span class="dogear dogear-next" data-goto="5">›</span></section>
+
+<!-- ===== 6. CLÁSICOS I ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Retrospectiva · I de II</p>
+  <h2 class="headline">Antes del mouse</h2>
+  <div class="dek">Los lenguajes que inventaron la simulación, entre 1959 y 1979 — ninguno se usa ya en producción, pero todos siguen vivos en la teoría que se enseña hoy.</div>
+
+  <div class="mag-item"><span class="mag-num">01</span>
+    <div class="mag-body"><h3 style="display:inline">GPSS</h3>
+      <div class="mag-meta">1961 · Geoffrey Gordon / IBM</div>
+      <p class="body-text">Lenguaje pionero orientado a bloques para simulación de eventos discretos. Modela sistemas como transacciones que fluyen por un diagrama de bloques.</p>
+      <div class="mag-history"><span class="label">Historia</span>Geoffrey Gordon lo creó en IBM a inicios de los 60 para simular el tráfico de mensajes en centrales telefónicas. Su enfoque de "transacciones fluyendo por bloques" se volvió el estándar de facto de la simulación de eventos discretos durante casi dos décadas y dio origen a toda una familia de lenguajes similares (GPSS/H, GPSS World).</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>No requiere programación tradicional, solo conectar bloques</li><li>Muy rápido para prototipar sistemas de colas simples</li><li>Décadas de literatura y ejemplos documentados</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Sintaxis rígida, poco expresiva para lógica compleja</li><li>Prácticamente abandonado fuera de la enseñanza</li><li>Sin gráficos 3D ni integración moderna</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 legacy">Histórico</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">02</span>
+    <div class="mag-body"><h3 style="display:inline">SIMULA 67</h3>
+      <div class="mag-meta">1967 · Dahl y Nygaard (Noruega)</div>
+      <p class="body-text">Diseñado para simulación, introdujo el concepto de clases y objetos y terminó por sentar las bases de la programación orientada a objetos.</p>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado en el Centro de Cómputo Noruego en Oslo como extensión de ALGOL 60, pensado para describir sistemas mediante "procesos" concurrentes. Sin buscarlo, sus autores inventaron el paradigma orientado a objetos que hoy domina casi todo el software.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Introdujo clases, herencia y objetos al modelado</li><li>Excelente para entidades con estado y comportamiento propio</li><li>Base teórica ampliamente estudiada</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Sin uso práctico actual como herramienta de simulación</li><li>Compiladores modernos prácticamente inexistentes</li><li>Curva de aprendizaje alta sin conocer ALGOL</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 legacy">Histórico</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">03</span>
+    <div class="mag-body"><h3 style="display:inline">SIMSCRIPT</h3>
+      <div class="mag-meta">1963 · RAND Corporation</div>
+      <p class="body-text">Lenguaje orientado a eventos para simular sistemas complejos, con manejo nativo de entidades, atributos y listas. Muy usado en logística militar y economía.</p>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado en RAND para simular sistemas logísticos durante la Guerra Fría. Su segunda versión importante, SIMSCRIPT II.5, se mantuvo en uso comercial vía CACI hasta bien entrados los años 2000.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Manejo natural de entidades y eventos</li><li>Buena documentación de casos militares y logísticos</li><li>Influyó en lenguajes de simulación posteriores</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Ecosistema y comunidad prácticamente extintos</li><li>Licencias comerciales limitaron su adopción académica</li><li>Sintaxis verbosa frente a alternativas modernas</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 legacy">Histórico</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 06 —</div>
+</div><span class="dogear dogear-prev" data-goto="4">‹</span><span class="dogear dogear-next" data-goto="6">›</span></section>
+
+<!-- ===== 7. CLÁSICOS II ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Retrospectiva · II de II</p>
+  <h2 class="headline">Antes del mouse (continuación)</h2>
+  <div class="dek">Los dos lenguajes que cierran la era fundacional.</div>
+
+  <div class="mag-item"><span class="mag-num">04</span>
+    <div class="mag-body"><h3 style="display:inline">DYNAMO</h3>
+      <div class="mag-meta">1959 · Jay Forrester (MIT)</div>
+      <p class="body-text">Primer lenguaje diseñado para dinámica de sistemas, usado para modelar sistemas industriales y urbanos mediante ecuaciones de nivel y flujo.</p>
+      <div class="mag-history"><span class="label">Historia</span>Nació en el grupo de Jay Forrester en el MIT, primero para dinámica industrial (1961) y después para dinámica urbana y mundial. El modelo World3, construido en DYNAMO, fue la base del influyente informe "Los límites del crecimiento" (1972).</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Notación nivel-flujo intuitiva para sistemas acumulativos</li><li>Ideal para comportamientos agregados de largo plazo</li><li>Base conceptual de toda la dinámica de sistemas</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Sintaxis de tarjetas perforadas, hoy obsoleta</li><li>No modela eventos discretos ni agentes individuales</li><li>Reemplazado por completo por Vensim y Stella</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 legacy">Histórico</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">05</span>
+    <div class="mag-body"><h3 style="display:inline">SLAM II</h3>
+      <div class="mag-meta">1979 · Pritsker y Pegden</div>
+      <p class="body-text">Combinaba tres visiones de modelado —redes, eventos discretos y variables continuas— dentro de un mismo lenguaje, algo poco común para su época.</p>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado por Pritsker &amp; Associates como evolución de GASP y Q-GERT. Su legado sobrevive indirectamente en SIMAN, el lenguaje sobre el que después se construyó Arena.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Combina tres paradigmas de modelado en un mismo estudio</li><li>Buena documentación técnica para su época</li><li>Influyó directamente en el diseño de SIMAN/Arena</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Aprendizaje complejo por combinar tres visiones</li><li>Sin desarrollo activo desde hace décadas</li><li>Interfaz completamente textual, sin gráficos</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 legacy">Histórico</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 07 —</div>
+</div><span class="dogear dogear-prev" data-goto="5">‹</span><span class="dogear dogear-next" data-goto="7">›</span></section>
+
+<!-- ===== 8. ANUNCIO 2 ===== -->
+<section class="page"><div class="page-pad">
+  <div class="ad">
+    <p class="kicker">Publicidad · Clasificados</p>
+    <div class="ad-headline">SE BUSCA</div>
+    <p class="ad-body">Generador de números pseudoaleatorios, periodo largo, buena distribución en varias dimensiones, sin patrones visibles al graficar pares consecutivos. Abstenerse RANDU — ya sabemos cómo termina esa historia.</p>
+    <div class="ad-cta">RANDU FUE EL GENERADOR DE IBM DE LOS AÑOS 60 CUYO DEFECTO EN LA TERCERA DIMENSIÓN SE VOLVIÓ ADVERTENCIA CLÁSICA EN TODO CURSO DE SIMULACIÓN</div>
+  </div>
+  <div class="folio">— 08 —</div>
+</div><span class="dogear dogear-prev" data-goto="6">‹</span><span class="dogear dogear-next" data-goto="8">›</span></section>
+
+<!-- ===== 9. DES I ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Reportaje · I de II</p>
+  <h2 class="headline">La fila también se puede optimizar</h2>
+  <div class="dek">El software comercial que domina hoy la simulación de manufactura, logística y servicios.</div>
+
+  <div class="mag-item"><span class="mag-num">01</span>
+    <div class="mag-body"><h3 style="display:inline">Arena</h3>
+      <div class="mag-meta">1993 (basado en SIMAN, 1982) · Rockwell Automation</div>
+      <p class="body-text">Software gráfico de simulación de eventos discretos para manufactura, logística y servicios, construido sobre el lenguaje SIMAN.</p>
+      <div class="mag-history"><span class="label">Historia</span>Nace en 1993 cuando Systems Modeling Corporation envuelve SIMAN (creado por Pegden en 1982) en una interfaz de arrastrar y soltar. Rockwell Automation adquirió la compañía en 2000, y desde entonces Arena es el estándar de facto en cursos universitarios de simulación.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Curva de aprendizaje razonable por su interfaz gráfica</li><li>Enorme comunidad académica y material didáctico</li><li>Buena integración con Excel y bases de datos</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Licencias comerciales costosas fuera del aula</li><li>Rendimiento limitado con decenas de miles de entidades</li><li>Visualización 3D más básica que la competencia</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial</span><a class="vidlink" href="https://www.youtube.com/watch?v=eTgD4D_SbOQ" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Ver demo real</a></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">02</span>
+    <div class="mag-body"><h3 style="display:inline">Simio</h3>
+      <div class="mag-meta">2007 · C. Dennis Pegden</div>
+      <p class="body-text">Simulación orientada a objetos en 3D creada por el mismo autor de SLAM y SIMAN, combina modelado por procesos y por objetos inteligentes.</p>
+      <div class="mag-history"><span class="label">Historia</span>Pegden la creó en 2007 tras dejar la empresa que fundó (Systems Modeling/Arena), buscando corregir las limitaciones de los lenguajes de bloques clásicos con un enfoque nativo orientado a objetos.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Combina modelado por procesos y por objetos</li><li>Visualización 3D nativa sin software adicional</li><li>Soporta modelos híbridos DES + agentes</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Comunidad más pequeña que Arena o AnyLogic</li><li>Aprendizaje pronunciado para el modelado por objetos</li><li>Licencias comerciales igualmente costosas</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">03</span>
+    <div class="mag-body"><h3 style="display:inline">ProModel</h3>
+      <div class="mag-meta">1988 · ProModel Corporation</div>
+      <p class="body-text">Enfocado en procesos de manufactura, con librerías orientadas al análisis de capacidad y a la optimización de líneas de producción.</p>
+      <div class="mag-history"><span class="label">Historia</span>Fundada en 1988 en Utah, se especializó desde el inicio en manufactura, ofreciendo bibliotecas ya listas para líneas de producción frente a los lenguajes de propósito general de la época.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Bibliotecas específicas de manufactura</li><li>Buena integración con Lean y Six Sigma</li><li>Reportes de capacidad listos para usar</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Menos flexible fuera de manufactura</li><li>Comunidad más reducida que Arena</li><li>Visualización menos pulida que alternativas 3D</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 09 —</div>
+</div><span class="dogear dogear-prev" data-goto="7">‹</span><span class="dogear dogear-next" data-goto="9">›</span></section>
+
+<!-- ===== 10. DES II ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Reportaje · II de II</p>
+  <h2 class="headline">La fila también se puede optimizar (continuación)</h2>
+  <div class="dek">Los dos software de eventos discretos más orientados a manufactura pesada.</div>
+
+  <div class="mag-item"><span class="mag-num">04</span>
+    <div class="mag-body"><h3 style="display:inline">FlexSim</h3>
+      <div class="mag-meta">1993 · FlexSim Software Products (adquirida por Autodesk)</div>
+      <p class="body-text">Simulación 3D de alto detalle visual para logística, manufactura y manejo de materiales, con foco en la representación fotorrealista.</p>
+      <div class="mag-history"><span class="label">Historia</span>Fundada en 1993 en Utah, apostó temprano por gráficos 3D de alta calidad cuando la mayoría de sus competidores usaba diagramas 2D. En 2024 fue adquirida por Autodesk, integrándola a su ecosistema de manufactura digital.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Visualización 3D de las más realistas del mercado</li><li>Librerías robustas para logística</li><li>Módulo de optimización experimental integrado</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Aprendizaje pronunciado en modelos complejos</li><li>Requiere hardware gráfico razonablemente potente</li><li>Sin versión gratuita permanente</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial</span><a class="vidlink" href="https://www.youtube.com/watch?v=GuarkAtYD98" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Ver demo real</a></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">05</span>
+    <div class="mag-body"><h3 style="display:inline">Tecnomatix Plant Simulation</h3>
+      <div class="mag-meta">Siemens (origen: eM-Plant)</div>
+      <p class="body-text">Simulación de líneas de producción y logística de planta a nivel de fábrica digital, parte de la suite de manufactura de Siemens.</p>
+      <div class="mag-history"><span class="label">Historia</span>Nació como eM-Plant en la alemana Tecnomatix Technologies, fue adquirida por UGS en 2005 y por Siemens en 2007, integrándose como pieza central del concepto de "gemelo digital".</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Integración profunda con el ecosistema Siemens</li><li>Fuerte adopción en la industria automotriz</li><li>Lenguaje de scripting propio (SimTalk) muy flexible</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Ecosistema centrado en Siemens, poco portable</li><li>Licencias empresariales, poco accesibles individualmente</li><li>Documentación en español limitada</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 10 —</div>
+</div><span class="dogear dogear-prev" data-goto="8">‹</span><span class="dogear dogear-next" data-goto="10">›</span></section>
+
+<!-- ===== 11. INFOGRAFÍA: DONUT ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker green">Infografía</p>
+  <h2 class="headline">Código abierto vs. comercial</h2>
+  <div class="dek">De las 26 herramientas y lenguajes activos catalogados en este número (sin contar los cinco históricos).</div>
+  <div class="donut-wrap">
+    <div class="donut" style="background:conic-gradient(var(--blue) 0% 58%, var(--red) 58% 100%);" aria-hidden="true"></div>
+    <div class="donut-legend">
+      <div><span class="sw" style="background:var(--blue)"></span>Código abierto / estándar — 15 (58%)</div>
+      <div><span class="sw" style="background:var(--red)"></span>Comercial — 11 (42%)</div>
+    </div>
+  </div>
+  <p class="body-text">La balanza se inclina hacia el código abierto sobre todo por los lenguajes de programación: nueve de los diez lenguajes de esta edición son gratuitos o estándares abiertos. Entre el software dedicado a simulación, en cambio, la balanza se invierte: la mayoría de las plataformas DES y de dinámica de sistemas siguen siendo comerciales.</p>
+  <p class="body-text">Esto no es casualidad: escribir un motor de simulación gráfico, con soporte, documentación y capacitación, sigue siendo un negocio — mientras que un lenguaje de programación gana más adopción mientras más abierto es.</p>
+  <div class="folio">— 11 —</div>
+</div><span class="dogear dogear-prev" data-goto="9">‹</span><span class="dogear dogear-next" data-goto="11">›</span></section>
+
+<!-- ===== 12. ANUNCIO 3 ===== -->
+<section class="page"><div class="page-pad">
+  <div class="ad">
+    <p class="kicker">Publicidad</p>
+    <div class="ad-headline">TARJETAS PERFORADAS<br>DE REPUESTO</div>
+    <div class="ad-sub">Compatibles con GPSS, SIMSCRIPT y su nostalgia.</div>
+    <p class="ad-body">¿Se quedó sin tarjetas a la mitad de una corrida? Nuestro paquete de 500 tarjetas en blanco, calibre estándar de 80 columnas, es justo lo que necesita para revivir la simulación como se hacía antes del botón deshacer.</p>
+    <div class="ad-cta">NO APTAS PARA LAVADORA NI PARA SU IMPRESORA LÁSER</div>
+  </div>
+  <div class="folio">— 12 —</div>
+</div><span class="dogear dogear-prev" data-goto="10">‹</span><span class="dogear dogear-next" data-goto="12">›</span></section>
+
+<!-- ===== 13. AGENTES I ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Reportaje · I de II</p>
+  <h2 class="headline">Poblaciones que piensan solas</h2>
+  <div class="dek">En vez de seguir "transacciones" por un diagrama, estas herramientas simulan agentes autónomos que interactúan entre sí y con su entorno.</div>
+
+  <div class="mag-item"><span class="mag-num">01</span>
+    <div class="mag-body"><h3 style="display:inline">NetLogo</h3>
+      <div class="mag-meta">1999 · Uri Wilensky (Northwestern University)</div>
+      <p class="body-text">Entorno de modelado multiagente programable, construido sobre Logo y orientado a educación e investigación en ciencias sociales y biología.</p>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado desde 1999 como sucesor de StarLogo, con el objetivo explícito de hacer accesible el modelado basado en agentes a estudiantes sin experiencia previa en programación.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Gratuito, de código abierto y multiplataforma</li><li>Sintaxis accesible incluso para principiantes</li><li>Enorme biblioteca de modelos de ejemplo</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Rendimiento limitado con cientos de miles de agentes</li><li>Visualización 2D, sin soporte 3D nativo</li><li>Menos adecuado para simulación empresarial</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 oss">Código abierto</span><a class="vidlink" href="https://www.youtube.com/watch?v=ZZFLKWpy7W0" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Ver demo real</a></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">02</span>
+    <div class="mag-body"><h3 style="display:inline">AnyLogic</h3>
+      <div class="mag-meta">2000 · The AnyLogic Company</div>
+      <p class="body-text">Plataforma multimétodo que combina, dentro de un mismo modelo, simulación basada en agentes, eventos discretos y dinámica de sistemas.</p>
+      <div class="mag-history"><span class="label">Historia</span>Fundada en 2000 por un equipo académico de la Universidad Estatal de San Petersburgo, fue pionera en combinar los tres grandes paradigmas de simulación dentro de un mismo modelo.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Único paradigma verdaderamente multimétodo</li><li>Fuerte adopción en cadenas de suministro y salud pública</li><li>Edición Personal Learning gratuita</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Curva de aprendizaje considerable</li><li>Rendimiento en Java más lento que soluciones nativas</li><li>Licencias profesionales de precio elevado</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial (edición gratuita)</span><a class="vidlink" href="https://www.youtube.com/watch?v=9e0F4VtgoaQ" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Ver demo real</a></div>
+    </div>
+  </div>
+
+  <div class="folio">— 13 —</div>
+</div><span class="dogear dogear-prev" data-goto="11">‹</span><span class="dogear dogear-next" data-goto="13">›</span></section>
+
+<!-- ===== 14. AGENTES II ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Reportaje · II de II</p>
+  <h2 class="headline">Poblaciones que piensan solas (continuación)</h2>
+  <div class="dek">Las dos plataformas de agentes con más peso académico y científico.</div>
+
+  <div class="mag-item"><span class="mag-num">03</span>
+    <div class="mag-body"><h3 style="display:inline">Repast</h3>
+      <div class="mag-meta">2001 · Argonne National Laboratory</div>
+      <p class="body-text">Conjunto de herramientas de código abierto para modelado basado en agentes, con fuerte presencia en ciencias sociales y ecología computacional.</p>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado desde 2001 en Argonne con financiamiento del gobierno de Estados Unidos; su rama de alto desempeño, Repast HPC, se usa en simulaciones de millones de agentes en supercomputadoras.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Completamente gratuito y de código abierto</li><li>Escalable hasta cómputo de alto desempeño</li><li>Fuerte respaldo académico</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Interfaz menos amigable que NetLogo o AnyLogic</li><li>Requiere conocimientos sólidos de Java</li><li>Documentación fragmentada entre versiones</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 oss">Código abierto</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">04</span>
+    <div class="mag-body"><h3 style="display:inline">MASON</h3>
+      <div class="mag-meta">2003 · George Mason University / U. de Michigan</div>
+      <p class="body-text">Biblioteca Java rápida y ligera pensada para simulaciones multiagente a gran escala donde el desempeño computacional es prioridad.</p>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado desde 2003 como colaboración entre ambas universidades, con el objetivo explícito de resolver las limitaciones de desempeño de NetLogo y Repast en simulaciones masivas.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Muy ligero y rápido frente a otras plataformas Java</li><li>Separación limpia entre modelo y visualización</li><li>Ideal para corridas masivas de investigación</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Sin interfaz gráfica de modelado</li><li>Comunidad pequeña, principalmente académica</li><li>Curva de aprendizaje alta sin saber Java</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 oss">Código abierto</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 14 —</div>
+</div><span class="dogear dogear-prev" data-goto="12">‹</span><span class="dogear dogear-next" data-goto="14">›</span></section>
+
+<!-- ===== 15. ANUNCIO 4 ===== -->
+<section class="page"><div class="page-pad">
+  <div class="ad">
+    <p class="kicker">Publicidad</p>
+    <div class="ad-headline">CURSO RELÁMPAGO</div>
+    <div class="ad-sub">Estado estacionario para principiantes: sepa por fin la diferencia con "equilibrio".</div>
+    <p class="ad-body">En solo cuarenta y cinco minutos aprenderá a distinguir un sistema en estado estacionario de uno en equilibrio, a no confundir "transitorio" con "temporal", y a defender su punto en la próxima junta de revisión de modelo sin sudar la gota gorda.</p>
+    <div class="ad-cta">INCLUYE DIPLOMA NO VALIDADO POR NINGUNA INSTITUCIÓN</div>
+  </div>
+  <div class="folio">— 15 —</div>
+</div><span class="dogear dogear-prev" data-goto="13">‹</span><span class="dogear dogear-next" data-goto="15">›</span></section>
+
+<!-- ===== 16. DINÁMICA I ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Reportaje · I de II</p>
+  <h2 class="headline">Todo es una bañera</h2>
+  <div class="dek">Herederas directas de DYNAMO: modelan el mundo como niveles (stocks) que se llenan y vacían a través de flujos.</div>
+
+  <div class="mag-item"><span class="mag-num">01</span>
+    <div class="mag-body"><h3 style="display:inline">Vensim</h3>
+      <div class="mag-meta">1985 · Ventana Systems</div>
+      <p class="body-text">Software para construir, simular y analizar modelos de dinámica de sistemas mediante diagramas de bucles causales y de nivel-flujo.</p>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado desde 1985 en Massachusetts, se volvió rápidamente una referencia en dinámica de sistemas aplicada a políticas públicas, salud y sostenibilidad, gracias a su motor de optimización y calibración.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Versión PLE gratuita, generosa para uso educativo</li><li>Herramientas de calibración y optimización muy maduras</li><li>Comunidad académica activa en sostenibilidad</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Interfaz visualmente menos moderna que competidores</li><li>Limitado a dinámica de sistemas, sin agentes ni DES</li><li>Versión completa (DSS) de precio elevado</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial (versión gratuita)</span><a class="vidlink" href="https://www.youtube.com/watch?v=uIcnEFQlBgw" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Ver demo real</a></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">02</span>
+    <div class="mag-body"><h3 style="display:inline">Stella / iThink</h3>
+      <div class="mag-meta">1985 · isee systems</div>
+      <p class="body-text">Herramienta visual de dinámica de sistemas orientada a educación y análisis de negocios, con una de las interfaces más intuitivas del área.</p>
+      <div class="mag-history"><span class="label">Historia</span>Lanzado en 1985 en New Hampshire, se diseñó pensando en el aula: fue de los primeros programas de dinámica de sistemas con interfaz completamente visual, sin escribir ecuaciones a mano.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>La interfaz más intuitiva y didáctica del área</li><li>Excelente para introducir el pensamiento sistémico</li><li>Buen soporte y materiales educativos oficiales</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Menos potente que Vensim en investigación avanzada</li><li>Licencias comerciales fuera del aula</li><li>Ecosistema de complementos más reducido</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 16 —</div>
+</div><span class="dogear dogear-prev" data-goto="14">‹</span><span class="dogear dogear-next" data-goto="16">›</span></section>
+
+<!-- ===== 17. DINÁMICA II ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Reportaje · II de II</p>
+  <h2 class="headline">Todo es una bañera (continuación)</h2>
+  <div class="dek">Una opción corporativa y una gratuita basada en navegador.</div>
+
+  <div class="mag-item"><span class="mag-num">03</span>
+    <div class="mag-body"><h3 style="display:inline">Powersim Studio</h3>
+      <div class="mag-meta">Noruega · Powersim</div>
+      <p class="body-text">Software de dinámica de sistemas orientado a modelado empresarial y de políticas públicas, con tableros de simulación interactivos.</p>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado en Noruega desde finales de los 80, se orientó desde el inicio al mundo corporativo, ofreciendo tableros pensados para presentar escenarios a tomadores de decisiones no técnicos.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Tableros interactivos para audiencias no técnicas</li><li>Fuerte enfoque en planeación estratégica</li><li>Buen soporte para escenarios "qué pasaría si"</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Menor presencia académica que Vensim o Stella</li><li>Comunidad de usuarios más pequeña</li><li>Licenciamiento orientado a empresas</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">04</span>
+    <div class="mag-body"><h3 style="display:inline">Insight Maker</h3>
+      <div class="mag-meta">2010 · Comunidad web abierta</div>
+      <p class="body-text">Herramienta gratuita basada en navegador que combina dinámica de sistemas con modelado basado en agentes en una sola plataforma.</p>
+      <div class="mag-history"><span class="label">Historia</span>Lanzado en 2010, nació explícitamente para bajar la barrera de entrada frente al software de escritorio costoso, funcionando por completo desde el navegador sin instalación.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Gratuito y funciona directo en el navegador</li><li>Combina dinámica de sistemas con agentes</li><li>Ideal para enseñanza introductoria</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Rendimiento limitado en modelos grandes</li><li>Menos herramientas de calibración que Vensim</li><li>Comunidad pequeña frente a opciones comerciales</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 oss">Código abierto</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 17 —</div>
+</div><span class="dogear dogear-prev" data-goto="15">‹</span><span class="dogear dogear-next" data-goto="17">›</span></section>
+
+<!-- ===== 18. ANUNCIO 5 ===== -->
+<section class="page"><div class="page-pad">
+  <div class="ad">
+    <p class="kicker">Publicidad</p>
+    <div class="ad-headline">CINTA PERFORADA<br>PARA DYNAMO</div>
+    <div class="ad-sub">Edición coleccionista. Ya no se fabrica (a decir verdad, nunca se fabricó así).</div>
+    <p class="ad-body">Rinda homenaje al informe que predijo los límites del crecimiento con nuestra cinta perforada conmemorativa, enmarcada y lista para colgar junto a su diploma. No funcional. Completamente decorativa. Absolutamente innecesaria.</p>
+    <div class="ad-cta">EDICIÓN LIMITADA A LAS UNIDADES QUE ALGUIEN QUIERA IMPRIMIR</div>
+  </div>
+  <div class="folio">— 18 —</div>
+</div><span class="dogear dogear-prev" data-goto="16">‹</span><span class="dogear dogear-next" data-goto="18">›</span></section>
+
+<!-- ===== 19. GENERAL I ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Reportaje · I de II</p>
+  <h2 class="headline">La caja de herramientas de propósito general</h2>
+  <div class="dek">No nacieron exclusivamente para simulación, pero se usan a diario para ella.</div>
+
+  <div class="mag-item"><span class="mag-num">01</span>
+    <div class="mag-body"><h3 style="display:inline">MATLAB / Simulink</h3>
+      <div class="mag-meta">MathWorks</div>
+      <p class="body-text">Entorno de cálculo numérico donde Simulink funciona como herramienta de modelado por diagramas de bloques para sistemas dinámicos y de control.</p>
+      <div class="mag-history"><span class="label">Historia</span>MATLAB nació a finales de los 70 como interfaz simplificada a bibliotecas de álgebra lineal en Fortran; Simulink se añadió en 1990 como capa de modelado gráfico, y hoy es el estándar de facto en ingeniería de control.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Ecosistema de toolboxes prácticamente inigualable</li><li>Estándar en control y sistemas embebidos</li><li>Excelente documentación oficial</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Licencias costosas fuera del ámbito académico</li><li>Aprendizaje alto para aprovechar todo el ecosistema</li><li>Rendimiento inferior a compilados en modelos grandes</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial (licencias académicas)</span><a class="vidlink" href="https://www.youtube.com/watch?v=GvRugdEICyQ" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Ver demo real</a></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">02</span>
+    <div class="mag-body"><h3 style="display:inline">SimPy</h3>
+      <div class="mag-meta">Comunidad de Python</div>
+      <p class="body-text">Biblioteca de Python para simulación de eventos discretos basada en procesos y corutinas, pensada para prototipos rápidos y ligeros.</p>
+      <div class="mag-history"><span class="label">Historia</span>Nació a mediados de los 2000 dentro de la comunidad de Python, inspirada en Simula, con el objetivo de traer la simulación de eventos discretos al ecosistema científico de Python sin software comercial.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Completamente gratuito y de código abierto</li><li>Se integra con NumPy, pandas y matplotlib</li><li>Ideal para prototipos y proyectos de investigación</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Sin interfaz gráfica de modelado</li><li>Rendimiento limitado frente a motores DES en C++</li><li>Sin soporte comercial oficial</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 oss">Código abierto</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 19 —</div>
+</div><span class="dogear dogear-prev" data-goto="17">‹</span><span class="dogear dogear-next" data-goto="19">›</span></section>
+
+<!-- ===== 20. GENERAL II ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Reportaje · II de II</p>
+  <h2 class="headline">La caja de herramientas de propósito general (continuación)</h2>
+  <div class="dek">La alternativa libre para modelado basado en ecuaciones.</div>
+
+  <div class="mag-item"><span class="mag-num">03</span>
+    <div class="mag-body"><h3 style="display:inline">OpenModelica</h3>
+      <div class="mag-meta">Open Source Modelica Consortium</div>
+      <p class="body-text">Entorno de código abierto basado en el lenguaje Modelica, para modelar sistemas físicos multidominio a partir de ecuaciones diferenciales algebraicas.</p>
+      <div class="mag-history"><span class="label">Historia</span>Impulsado desde 2006 por el consorcio liderado por la Universidad de Linköping (Suecia), nació como alternativa libre a herramientas comerciales basadas en Modelica, como Dymola.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Completamente gratuito, sin restricciones de licencia</li><li>Modelado basado en ecuaciones, muy potente</li><li>Fuerte comunidad académica europea</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Interfaz menos pulida que alternativas comerciales</li><li>Aprendizaje alto sin dominar Modelica</li><li>Documentación a veces desactualizada</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 oss">Código abierto</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 20 —</div>
+</div><span class="dogear dogear-prev" data-goto="18">‹</span><span class="dogear dogear-next" data-goto="20">›</span></section>
+
+<!-- ===== 21. ANUNCIO 6 ===== -->
+<section class="page"><div class="page-pad">
+  <div class="ad">
+    <p class="kicker">Publicidad</p>
+    <div class="ad-headline">CALIBRACIÓN DE SEMILLAS<br>A DOMICILIO</div>
+    <div class="ad-sub">Llegamos antes que su primer número pseudoaleatorio.</div>
+    <p class="ad-body">Nuestro técnico certificado visita su hogar u oficina para revisar, una por una, las semillas de sus generadores congruenciales. Incluye prueba de periodo, prueba de uniformidad y una plática incómoda sobre por qué usaba la hora del sistema.</p>
+    <div class="ad-cta">SERVICIO NO DISPONIBLE. NUNCA LO ESTUVO.</div>
+  </div>
+  <div class="folio">— 21 —</div>
+</div><span class="dogear dogear-prev" data-goto="19">‹</span><span class="dogear dogear-next" data-goto="21">›</span></section>
+
+<!-- ===== 22. PROGRAMACIÓN I ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Guía práctica · I de III</p>
+  <h2 class="headline">Escríbalo usted mismo</h2>
+  <div class="dek">Diez lenguajes de propósito general con los que se puede construir una simulación desde cero.</div>
+
+  <div class="mag-item"><span class="mag-num">01</span>
+    <div class="mag-body"><h3 style="display:inline">Python</h3>
+      <div class="mag-meta">1991 · Guido van Rossum</div>
+      <div class="mag-history"><span class="label">Historia</span>Creado en 1991 en los Países Bajos como sucesor del lenguaje ABC. Ganó terreno en simulación durante la década de 2010 gracias al auge del cómputo científico y bibliotecas como NumPy y SimPy.</div>
+      <div class="code-block"><span class="cm"># Generador congruencial lineal + Monte Carlo para π</span>
+def lcg(seed, a=1664525, c=1013904223, m=2**32):
+    x = seed
+    while True:
+        x = (a * x + c) % m
+        yield x / m
+
+gen = lcg(seed=42)
+dentro = sum(1 for _ in range(10000)
+             if next(gen)**2 + next(gen)**2 <= 1)
+pi_est = 4 * dentro / 10000</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Sintaxis simple, ideal para prototipar rápido</li><li>Ecosistema científico enorme (NumPy, SciPy, Mesa)</li><li>Curva de aprendizaje baja</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Más lento que lenguajes compilados</li><li>El GIL limita el paralelismo real con hilos</li><li>Requiere bibliotecas externas para casi todo</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 oss">Código abierto</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">02</span>
+    <div class="mag-body"><h3 style="display:inline">C</h3>
+      <div class="mag-meta">1972 · Dennis Ritchie (Bell Labs)</div>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado en 1972 en Bell Labs para reescribir Unix. Se convirtió en la base de facto de los motores de simulación de alto desempeño gracias a su control directo sobre la memoria.</div>
+      <div class="code-block"><span class="cm">/* Generador congruencial lineal clásico */</span>
+unsigned long seed = 12345;
+
+unsigned long lcg_next(void) {
+    seed = (1103515245UL * seed + 12345UL)
+            % 2147483648UL;
+    return seed;
+}</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Control total sobre memoria y desempeño</li><li>Estándar ISO estable desde 1989</li><li>Base de innumerables motores profesionales</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Sin gestión automática de memoria</li><li>Aprendizaje alto viniendo de lenguajes de alto nivel</li><li>Desarrollo más lento que en Python o R</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Estándar ISO</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">03</span>
+    <div class="mag-body"><h3 style="display:inline">C++</h3>
+      <div class="mag-meta">1985 · Bjarne Stroustrup (Bell Labs)</div>
+      <div class="mag-history"><span class="label">Historia</span>Creado por Stroustrup desde 1979 y publicado en 1985 como "C con clases". Combina el control de bajo nivel de C con abstracciones orientadas a objetos; es el lenguaje detrás de motores como el de FlexSim.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Rendimiento cercano a C con abstracciones de alto nivel</li><li>Amplio soporte de programación orientada a objetos</li><li>Motor de elección para gráficos y físicas en tiempo real</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Complejidad notablemente mayor que C</li><li>Tiempos de compilación largos en proyectos grandes</li><li>Gestión de memoria sigue siendo propensa a errores</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Estándar ISO</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">04</span>
+    <div class="mag-body"><h3 style="display:inline">Java</h3>
+      <div class="mag-meta">1995 · Sun Microsystems (hoy Oracle / OpenJDK)</div>
+      <div class="mag-history"><span class="label">Historia</span>Presentado en 1995 bajo el lema "compile una vez, corra en cualquier lado". Se volvió el lenguaje de elección de AnyLogic, MASON y Repast Simphony gracias a su portabilidad y recolector de basura maduro.</div>
+      <div class="code-block"><span class="cm">// Interarribos exponenciales para una cola M/M/1</span>
+Random rng = new Random(7);
+double reloj = 0, finServicio = 0;
+int atendidos = 0;
+
+for (int i = 0; i < 20; i++) {
+    reloj += -Math.log(rng.nextDouble()) / 0.5;
+    if (reloj >= finServicio) {
+        finServicio = reloj
+            - Math.log(rng.nextDouble()) / 0.8;
+        atendidos++;
+    }
+}</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Portabilidad total gracias a la JVM</li><li>Recolector de basura maduro</li><li>Motor de AnyLogic, MASON y Repast</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Mayor consumo de memoria que C++</li><li>Sintaxis más verbosa que Python</li><li>Arranque de la JVM añade latencia</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Código abierto (OpenJDK)</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 22 —</div>
+</div><span class="dogear dogear-prev" data-goto="20">‹</span><span class="dogear dogear-next" data-goto="22">›</span></section>
+
+<!-- ===== 23. PROGRAMACIÓN II ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Guía práctica · II de III</p>
+  <h2 class="headline">Escríbalo usted mismo (continuación)</h2>
+  <div class="dek">Un lenguaje de videojuegos, el estándar de la estadística y el intento más reciente de tenerlo todo.</div>
+
+  <div class="mag-item"><span class="mag-num">05</span>
+    <div class="mag-body"><h3 style="display:inline">C#</h3>
+      <div class="mag-meta">2000 · Microsoft (Anders Hejlsberg)</div>
+      <div class="mag-history"><span class="label">Historia</span>Presentado en 2000, se volvió relevante en simulación sobre todo a través de Unity, motor de videojuegos también usado para simulaciones de entrenamiento y gemelos digitales interactivos.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Integración directa con Unity para 3D interactivo</li><li>Sintaxis moderna con buenas herramientas de depuración</li><li>Rendimiento sólido gracias a .NET</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Históricamente ligado al ecosistema Windows</li><li>Menor presencia en simulación científica pura</li><li>Aprendizaje adicional si el fin no son videojuegos</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Código abierto (.NET)</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">06</span>
+    <div class="mag-body"><h3 style="display:inline">R</h3>
+      <div class="mag-meta">1993 · Ross Ihaka y Robert Gentleman</div>
+      <div class="mag-history"><span class="label">Historia</span>Creado en 1993 en la Universidad de Auckland como implementación libre del lenguaje S. Se volvió el estándar de facto en estadística aplicada y, por extensión, en simulaciones Monte Carlo orientadas al análisis de datos.</div>
+      <div class="code-block"><span class="cm"># Estimación de π por Monte Carlo, vectorizado</span>
+set.seed(123)
+n <- 100000
+x <- runif(n, -1, 1)
+y <- runif(n, -1, 1)
+dentro <- sum(x^2 + y^2 <= 1)
+pi_est <- 4 * dentro / n</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Operaciones vectorizadas, sin bucles explícitos</li><li>CRAN ofrece paquetes para casi cualquier distribución</li><li>Excelente para visualizar resultados de inmediato</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Rendimiento pobre en bucles no vectorizables</li><li>Manejo de memoria menos eficiente que Python</li><li>Menos adecuado para DES o agentes complejos</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 oss">Código abierto</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">07</span>
+    <div class="mag-body"><h3 style="display:inline">Julia</h3>
+      <div class="mag-meta">2012 · MIT (Bezanson, Karpinski, Shah, Edelman)</div>
+      <div class="mag-history"><span class="label">Historia</span>Presentado en 2012, buscó desde el diseño resolver el "problema de los dos lenguajes": prototipar en algo tan fácil como Python sin sacrificar el desempeño de C.</div>
+      <div class="code-block"><span class="cm"># Caminata aleatoria de un agente en 1D</span>
+using Random
+Random.seed!(1)
+
+pos = 0
+trayectoria = Int[]
+for paso in 1:1000
+    pos += rand(Bool) ? 1 : -1
+    push!(trayectoria, pos)
+end</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Compilación JIT cercana a la velocidad de C</li><li>Sintaxis matemática de alto nivel</li><li>Crece rápido en simulación de sistemas a gran escala</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Ecosistema aún más pequeño que Python</li><li>Tiempos de "primera ejecución" (JIT) notablemente lentos</li><li>Menos tutoriales en español</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 oss">Código abierto</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 23 —</div>
+</div><span class="dogear dogear-prev" data-goto="21">‹</span><span class="dogear dogear-next" data-goto="23">›</span></section>
+
+<!-- ===== 24. PROGRAMACIÓN III ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Guía práctica · III de III</p>
+  <h2 class="headline">Escríbalo usted mismo (final)</h2>
+  <div class="dek">El decano del cómputo científico y dos lenguajes pensados para ecuaciones, no para instrucciones.</div>
+
+  <div class="mag-item"><span class="mag-num">08</span>
+    <div class="mag-body"><h3 style="display:inline">Fortran</h3>
+      <div class="mag-meta">1957 · IBM (John Backus)</div>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado por IBM entre 1954 y 1957, es el lenguaje de alto nivel más antiguo aún en uso activo. Su dominio absoluto en cómputo científico durante décadas lo mantiene vivo en núcleos numéricos de simulaciones climáticas y estructurales.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Rendimiento excepcional en cálculo numérico intensivo</li><li>Décadas de bibliotecas optimizadas (LAPACK, BLAS)</li><li>Aún es estándar en supercómputo y meteorología</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Sintaxis percibida como anticuada</li><li>Comunidad y nuevos desarrolladores en declive</li><li>Ecosistema fuera del cómputo numérico casi inexistente</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Estándar ISO</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">09</span>
+    <div class="mag-body"><h3 style="display:inline">MATLAB (el lenguaje)</h3>
+      <div class="mag-meta">Cleve Moler · comercializado desde 1984 (MathWorks)</div>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado a finales de los 70 por Cleve Moler como interfaz simplificada a bibliotecas de álgebra lineal en Fortran (LINPACK, EISPACK) — de ahí su nombre, "Matrix Laboratory". Se comercializó formalmente en 1984.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Sintaxis matricial extremadamente natural</li><li>Depuración y visualización integradas</li><li>Enorme cantidad de cursos disponibles</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Licencias comerciales necesarias fuera de la academia</li><li>Rendimiento inferior a compilados en bucles intensivos</li><li>Código poco portable fuera de MathWorks</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Comercial (licencias académicas)</span></div>
+    </div>
+  </div>
+
+  <div class="mag-item"><span class="mag-num">10</span>
+    <div class="mag-body"><h3 style="display:inline">Modelica</h3>
+      <div class="mag-meta">Desde 1996 · Consorcio internacional (U. de Linköping)</div>
+      <div class="mag-history"><span class="label">Historia</span>Desarrollado desde 1996 por un consorcio liderado por la Universidad de Linköping, se diseñó como lenguaje de modelado basado en ecuaciones —no en bloques de señal— para describir sistemas físicos multidominio de forma unificada.</div>
+      <div class="pros-cons">
+        <div class="pros"><h5>Ventajas</h5><ul><li>Modelado basado en ecuaciones, natural para sistemas físicos</li><li>Estándar abierto, no depende de un solo proveedor</li><li>Reutiliza componentes entre dominios distintos</li></ul></div>
+        <div class="cons"><h5>Desventajas</h5><ul><li>Aprendizaje alto viniendo de lenguajes imperativos</li><li>Herramientas comerciales completas (Dymola) son costosas</li><li>Comunidad más reducida que lenguajes generales</li></ul></div>
+      </div>
+      <div class="mag-foot"><span class="stamp2 active">Activo · Estándar abierto</span></div>
+    </div>
+  </div>
+
+  <div class="folio">— 24 —</div>
+</div><span class="dogear dogear-prev" data-goto="22">‹</span><span class="dogear dogear-next" data-goto="24">›</span></section>
+
+<!-- ===== 25. ANUNCIO 7 ===== -->
+<section class="page"><div class="page-pad">
+  <div class="ad">
+    <p class="kicker">En el próximo número</p>
+    <div class="ad-headline">LO QUE VIENE</div>
+    <ul class="ad-list">
+      <li>Monte Carlo aplicado a videojuegos: cómo se decide qué tan "cargados" están los dados.</li>
+      <li>Entrevista con un agente de NetLogo (traducción libre de sus movimientos).</li>
+      <li>Guía de bolsillo: qué distribución de probabilidad usar y cuándo.</li>
+    </ul>
+    <div class="ad-cta">RESERVE SU EJEMPLAR. O SIMPLEMENTE VUELVA A ABRIR ESTE ARCHIVO.</div>
+  </div>
+  <div class="folio">— 25 —</div>
+</div><span class="dogear dogear-prev" data-goto="23">‹</span><span class="dogear dogear-next" data-goto="25">›</span></section>
+
+<!-- ===== 26. TABLA COMPARATIVA ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker blue">Referencia rápida</p>
+  <h2 class="headline">Tabla comparativa</h2>
+  <div class="dek">Las 31 fichas de este número, de un vistazo.</div>
+  <table class="cmp">
+    <thead><tr><th>Nombre</th><th>Categoría</th><th>Año</th><th>Licencia</th><th>Curva</th></tr></thead>
+    <tbody>
+      <tr><td class="name">GPSS</td><td>Clásico</td><td>1961</td><td>Histórico</td><td>Media</td></tr>
+      <tr><td class="name">SIMULA 67</td><td>Clásico</td><td>1967</td><td>Histórico</td><td>Alta</td></tr>
+      <tr><td class="name">SIMSCRIPT</td><td>Clásico</td><td>1963</td><td>Histórico</td><td>Media</td></tr>
+      <tr><td class="name">DYNAMO</td><td>Clásico</td><td>1959</td><td>Histórico</td><td>Media</td></tr>
+      <tr><td class="name">SLAM II</td><td>Clásico</td><td>1979</td><td>Histórico</td><td>Alta</td></tr>
+      <tr><td class="name">Arena</td><td>DES</td><td>1993</td><td>Comercial</td><td>Media</td></tr>
+      <tr><td class="name">Simio</td><td>DES</td><td>2007</td><td>Comercial</td><td>Alta</td></tr>
+      <tr><td class="name">ProModel</td><td>DES</td><td>1988</td><td>Comercial</td><td>Media</td></tr>
+      <tr><td class="name">FlexSim</td><td>DES</td><td>1993</td><td>Comercial</td><td>Alta</td></tr>
+      <tr><td class="name">Plant Simulation</td><td>DES</td><td>—</td><td>Comercial</td><td>Alta</td></tr>
+      <tr><td class="name">NetLogo</td><td>Agentes</td><td>1999</td><td>Abierto</td><td>Baja</td></tr>
+      <tr><td class="name">AnyLogic</td><td>Agentes</td><td>2000</td><td>Comercial</td><td>Alta</td></tr>
+      <tr><td class="name">Repast</td><td>Agentes</td><td>2001</td><td>Abierto</td><td>Alta</td></tr>
+      <tr><td class="name">MASON</td><td>Agentes</td><td>2003</td><td>Abierto</td><td>Alta</td></tr>
+      <tr><td class="name">Vensim</td><td>Din. sistemas</td><td>1985</td><td>Comercial*</td><td>Media</td></tr>
+      <tr><td class="name">Stella / iThink</td><td>Din. sistemas</td><td>1985</td><td>Comercial</td><td>Baja</td></tr>
+      <tr><td class="name">Powersim Studio</td><td>Din. sistemas</td><td>—</td><td>Comercial</td><td>Media</td></tr>
+      <tr><td class="name">Insight Maker</td><td>Din. sistemas</td><td>2010</td><td>Abierto</td><td>Baja</td></tr>
+      <tr><td class="name">MATLAB/Simulink</td><td>Propósito gral.</td><td>1990</td><td>Comercial</td><td>Alta</td></tr>
+      <tr><td class="name">SimPy</td><td>Propósito gral.</td><td>—</td><td>Abierto</td><td>Media</td></tr>
+      <tr><td class="name">OpenModelica</td><td>Propósito gral.</td><td>2006</td><td>Abierto</td><td>Alta</td></tr>
+      <tr><td class="name">Python</td><td>Lenguaje</td><td>1991</td><td>Abierto</td><td>Baja</td></tr>
+      <tr><td class="name">C</td><td>Lenguaje</td><td>1972</td><td>Estándar</td><td>Alta</td></tr>
+      <tr><td class="name">C++</td><td>Lenguaje</td><td>1985</td><td>Estándar</td><td>Alta</td></tr>
+      <tr><td class="name">Java</td><td>Lenguaje</td><td>1995</td><td>Abierto</td><td>Media</td></tr>
+      <tr><td class="name">C#</td><td>Lenguaje</td><td>2000</td><td>Abierto</td><td>Media</td></tr>
+      <tr><td class="name">R</td><td>Lenguaje</td><td>1993</td><td>Abierto</td><td>Media</td></tr>
+      <tr><td class="name">Julia</td><td>Lenguaje</td><td>2012</td><td>Abierto</td><td>Media</td></tr>
+      <tr><td class="name">Fortran</td><td>Lenguaje</td><td>1957</td><td>Estándar</td><td>Alta</td></tr>
+      <tr><td class="name">MATLAB (lenguaje)</td><td>Lenguaje</td><td>~1979</td><td>Comercial</td><td>Media</td></tr>
+      <tr><td class="name">Modelica</td><td>Lenguaje</td><td>1996</td><td>Estándar abierto</td><td>Alta</td></tr>
+    </tbody>
+  </table>
+  <p class="body-text" style="margin-top:14px; font-size:11px;">*Vensim ofrece una versión gratuita (PLE) además de su versión comercial completa. "Curva" es una valoración editorial orientativa, no una medición formal.</p>
+  <div class="folio">— 26 —</div>
+</div><span class="dogear dogear-prev" data-goto="24">‹</span><span class="dogear dogear-next" data-goto="26">›</span></section>
+
+<!-- ===== 27. GLOSARIO ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker blue">Referencia</p>
+  <h2 class="headline">Glosario</h2>
+  <div class="dek">Los términos que aparecen una y otra vez en este número.</div>
+
+  <div class="gloss-item"><div class="gloss-term">Simulación de eventos discretos (DES)</div><div class="gloss-def">Enfoque donde el sistema cambia de estado solo en instantes puntuales (eventos), no de forma continua — por ejemplo, cuando llega o sale un cliente de una fila.</div></div>
+  <div class="gloss-item"><div class="gloss-term">Modelado basado en agentes (ABM)</div><div class="gloss-def">Enfoque donde el comportamiento global del sistema emerge de reglas simples que sigue cada agente individual, sin una lógica central.</div></div>
+  <div class="gloss-item"><div class="gloss-term">Dinámica de sistemas</div><div class="gloss-def">Enfoque que representa el sistema como niveles (stocks) que se acumulan y flujos (rates) que los modifican con el tiempo.</div></div>
+  <div class="gloss-item"><div class="gloss-term">Número pseudoaleatorio</div><div class="gloss-def">Número generado por un algoritmo determinista que, estadísticamente, se comporta como si fuera aleatorio.</div></div>
+  <div class="gloss-item"><div class="gloss-term">Generador congruencial lineal (LCG)</div><div class="gloss-def">Algoritmo de la forma x<sub>i+1</sub> = (a·x<sub>i</sub> + c) mod m para generar secuencias de números pseudoaleatorios.</div></div>
+  <div class="gloss-item"><div class="gloss-term">Semilla</div><div class="gloss-def">El valor inicial (x₀) que arranca un generador de números pseudoaleatorios; la misma semilla siempre produce la misma secuencia.</div></div>
+  <div class="gloss-item"><div class="gloss-term">Periodo (de un generador)</div><div class="gloss-def">La cantidad de números que un generador produce antes de que la secuencia empiece a repetirse.</div></div>
+  <div class="gloss-item"><div class="gloss-term">Cola M/M/1</div><div class="gloss-def">Modelo clásico de teoría de colas: llegadas de Poisson (M), tiempos de servicio exponenciales (M) y un solo servidor (1).</div></div>
+  <div class="gloss-item"><div class="gloss-term">Stock y flujo</div><div class="gloss-def">En dinámica de sistemas, el stock es una acumulación (por ejemplo, agua en un tanque) y el flujo es la tasa a la que cambia (entrada o salida).</div></div>
+  <div class="gloss-item"><div class="gloss-term">Gemelo digital (digital twin)</div><div class="gloss-def">Representación virtual de un sistema físico real, sincronizada con datos reales, usada para simular escenarios antes de aplicarlos.</div></div>
+  <div class="gloss-item"><div class="gloss-term">Método de Monte Carlo</div><div class="gloss-def">Técnica que usa muestreo aleatorio repetido para aproximar resultados numéricos, como estimar el valor de π lanzando puntos al azar.</div></div>
+
+  <div class="folio">— 27 —</div>
+</div><span class="dogear dogear-prev" data-goto="25">‹</span><span class="dogear dogear-next" data-goto="27">›</span></section>
+
+<!-- ===== 28. TRIVIA ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Trivia</p>
+  <h2 class="headline">¿Sabía que…?</h2>
+  <div class="dek">Datos curiosos para llevar a la próxima clase de simulación.</div>
+  <ul class="trivia-list">
+    <li>RANDU, el generador de números pseudoaleatorios de IBM de los años 60, tenía un defecto tan grave en su distribución tridimensional que hoy se enseña en clase precisamente como advertencia de lo que no hay que hacer.</li>
+    <li>Los creadores de SIMULA 67, Ole-Johan Dahl y Kristen Nygaard, recibieron el Turing Award en 2001 por inventar, sin proponérselo del todo, la programación orientada a objetos.</li>
+    <li>El informe "Los límites del crecimiento" (1972), construido con el lenguaje DYNAMO, vendió más de 30 millones de copias y sigue siendo uno de los libros de no ficción más vendidos de la historia.</li>
+    <li>GPSS se creó originalmente para simular el tráfico de mensajes en centrales telefónicas de IBM, no para manufactura — su aplicación a fábricas llegó después.</li>
+    <li>Python no debe su nombre a la serpiente: Guido van Rossum lo bautizó en honor al grupo de comedia británico Monty Python.</li>
+    <li>Fortran, publicado en 1957, es más antiguo que la mayoría de los lenguajes que hoy se enseñan como "modernos" — y sigue corriendo en modelos climáticos y de supercómputo.</li>
+    <li>C. Dennis Pegden participó en el diseño de tres generaciones distintas de software de simulación: SLAM, SIMAN/Arena y Simio.</li>
+  </ul>
+  <div class="folio">— 28 —</div>
+</div><span class="dogear dogear-prev" data-goto="26">‹</span><span class="dogear dogear-next" data-goto="28">›</span></section>
+
+<!-- ===== 29. ANUNCIO 8 ===== -->
+<section class="page"><div class="page-pad">
+  <div class="ad">
+    <p class="kicker">Publicidad</p>
+    <div class="ad-headline">GLOSARIO DE BOLSILLO</div>
+    <div class="ad-sub">Para explicarle a su familia qué hace todo el día frente a la computadora.</div>
+    <p class="ad-body">Tarjetas plastificadas con frases listas para usar: "no, no es lo mismo que un videojuego", "sí, a veces sí se tarda ocho horas en correr", y "no, todavía no sé si el generador tiene buen periodo". Incluye una tarjeta de emergencia para reuniones familiares.</p>
+    <div class="ad-cta">OFERTA VÁLIDA MIENTRAS SIGA LEYENDO ESTA REVISTA</div>
+  </div>
+  <div class="folio">— 29 —</div>
+</div><span class="dogear dogear-prev" data-goto="27">‹</span><span class="dogear dogear-next" data-goto="29">›</span></section>
+
+<!-- ===== 30. LABORATORIO ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker green">Especial interactivo</p>
+  <h2 class="headline">Pruébelo usted mismo</h2>
+  <div class="dek">Cinco simulaciones construidas desde cero — sin depender de ningún software externo. Muévale a los controles.</div>
+
+  <div class="lab-grid">
+    <div class="lab-panel">
+      <h4>Generador congruencial lineal</h4>
+      <p class="lab-desc">x<sub>i+1</sub> = (a·x<sub>i</sub> + c) mod m. Cada punto grafica el par (x<sub>i</sub>, x<sub>i+1</sub>) — un generador malo deja ver rejillas en vez de una nube pareja.</p>
+      <canvas id="lcgCanvas" width="600" height="280"></canvas>
+      <div class="lab-controls">
+        <label>a<input type="number" id="lcgA" value="1601"></label>
+        <label>c<input type="number" id="lcgC" value="3456"></label>
+        <label>m<input type="number" id="lcgM" value="10000"></label>
+        <label>x₀<input type="number" id="lcgSeed" value="7"></label>
+      </div>
+      <button class="lab-btn" id="lcgRun" type="button">Generar 600 puntos</button>
+      <div class="lab-readout" id="lcgReadout">Primeros valores: —</div>
+    </div>
+
+    <div class="lab-panel">
+      <h4>Cola de un servidor</h4>
+      <p class="lab-desc">Clientes que llegan al azar y esperan a ser atendidos por un único servidor.</p>
+      <canvas id="queueCanvas" width="600" height="280"></canvas>
+      <div class="lab-controls">
+        <label>Llegadas (λ)<input type="range" id="queueLambda" min="0.15" max="1" step="0.05" value="0.45"></label>
+        <label>Servicio (μ)<input type="range" id="queueMu" min="0.15" max="1" step="0.05" value="0.55"></label>
+      </div>
+      <button class="lab-btn" id="queueToggle" type="button">Iniciar</button>
+      <div class="lab-readout" id="queueReadout">En cola: 0 · Atendidos: 0</div>
+    </div>
+
+    <div class="lab-panel">
+      <h4>Caminata aleatoria de agentes</h4>
+      <p class="lab-desc">Cada punto es un agente autónomo moviéndose según una regla simple y local.</p>
+      <canvas id="walkCanvas" width="600" height="280"></canvas>
+      <div class="lab-controls">
+        <label>Agentes<input type="range" id="walkCount" min="1" max="40" step="1" value="14"></label>
+        <label>Velocidad<input type="range" id="walkSpeed" min="1" max="6" step="1" value="2"></label>
+      </div>
+      <button class="lab-btn" id="walkToggle" type="button">Iniciar</button>
+      <div class="lab-readout" id="walkReadout">Pasos simulados: 0</div>
+    </div>
+
+    <div class="lab-panel">
+      <h4>Tanque de nivel y flujo</h4>
+      <p class="lab-desc">Un stock que sube con el flujo de entrada y baja con el de salida.</p>
+      <canvas id="tankCanvas" width="600" height="280"></canvas>
+      <div class="lab-controls">
+        <label>Entrada<input type="range" id="tankIn" min="0" max="10" step="0.5" value="4"></label>
+        <label>Salida<input type="range" id="tankOut" min="0" max="10" step="0.5" value="2.5"></label>
+      </div>
+      <button class="lab-btn" id="tankToggle" type="button">Iniciar</button>
+      <div class="lab-readout" id="tankReadout">Nivel: 0%</div>
+    </div>
+
+    <div class="lab-panel">
+      <h4>Monte Carlo: estimando π</h4>
+      <p class="lab-desc">Se "lanzan" puntos al azar dentro de un cuadrado; la proporción que cae dentro del círculo inscrito aproxima π/4.</p>
+      <canvas id="mcCanvas" width="600" height="280"></canvas>
+      <div class="lab-controls">
+        <label>Dardos por cuadro<input type="range" id="mcRate" min="1" max="20" step="1" value="6"></label>
+      </div>
+      <button class="lab-btn" id="mcToggle" type="button">Iniciar</button>
+      <button class="lab-btn" id="mcReset" type="button">Reiniciar</button>
+      <div class="lab-readout" id="mcReadout">Dardos: 0 · π ≈ —</div>
+    </div>
+  </div>
+
+  <div class="folio">— 30 —</div>
+</div><span class="dogear dogear-prev" data-goto="28">‹</span><span class="dogear dogear-next" data-goto="30">›</span></section>
+
+<!-- ===== 31. CRÉDITOS ===== -->
+<section class="page"><div class="page-pad">
+  <p class="kicker">Colofón</p>
+  <h2 class="headline">Créditos</h2>
+  <div class="colophon">
+    <p><strong>SIMULA</strong> — N.º 01, Verano 2026. Primera Edición.</p>
+    <p>Editado por Perez Luevano Marco Antonio como material de apoyo para el curso de Simulación (SCD-1022).</p>
+    <p>21 fichas de software, 10 lenguajes de programación, una línea del tiempo, dos infografías, una tabla comparativa, un glosario, una sección de trivia y cinco experimentos interactivos.</p>
+    <p>Todas las secciones de publicidad de este número son ficticias y con fines de entretenimiento.</p>
+    <p>Fuentes: documentación pública de cada software y bibliografía general de la disciplina de simulación. Las valoraciones de "ventajas", "desventajas" y "curva de aprendizaje" son apreciaciones editoriales, no mediciones formales.</p>
+    <p style="margin-top:26px;">Fin del número. <span data-goto="0" style="color:var(--red); cursor:pointer; text-decoration:underline;">Vuelva a la portada</span> o <span data-goto="1" style="color:var(--red); cursor:pointer; text-decoration:underline;">siga hojeando desde el índice</span>.</p>
+  </div>
+  <div class="folio">— 31 —</div>
+</div><span class="dogear dogear-prev" data-goto="29">‹</span></section>
+
+</div></div>
+
+<div class="navbar">
+  <button id="btnFirst" type="button" title="Portada">⏮</button>
+  <button id="btnPrev" type="button">‹ Anterior</button>
+  <span class="page-counter"><span id="pageNow">1</span> / <span id="pageTotal">31</span></span>
+  <button id="btnNext" type="button">Siguiente ›</button>
+  <button id="btnToc" type="button">☰ Índice</button>
+</div>
+
+<script>
+(function(){
+  const pages = Array.from(document.querySelectorAll('.page'));
+  let current = 0;
+  let animating = false;
+  document.getElementById('pageTotal').textContent = pages.length;
+
+  function goTo(i){
+    if (animating || i === current || i < 0 || i >= pages.length) return;
+    const dir = i > current ? 1 : -1;
+    animating = true;
+    const cur = pages[current];
+    const nxt = pages[i];
+
+    nxt.style.zIndex = 3;
+    cur.style.zIndex = 2;
+    nxt.style.transition = 'none';
+    nxt.style.visibility = 'visible';
+    nxt.style.opacity = '0';
+    nxt.style.transform = 'rotateY(' + (dir === 1 ? 90 : -90) + 'deg)';
+    void nxt.offsetWidth;
+    nxt.style.transition = '';
+
+    requestAnimationFrame(() => {
+      cur.style.transform = 'rotateY(' + (dir === 1 ? -90 : 90) + 'deg)';
+      cur.style.opacity = '0';
+      nxt.style.transform = 'rotateY(0deg)';
+      nxt.style.opacity = '1';
+    });
+
+    setTimeout(() => {
+      cur.classList.remove('active');
+      cur.style.visibility = 'hidden';
+      cur.style.zIndex = '';
+      cur.style.transform = 'rotateY(0deg)';
+      nxt.classList.add('active');
+      nxt.style.zIndex = '';
+      current = i;
+      animating = false;
+      updateChrome();
+    }, 520);
+  }
+
+  function updateChrome(){
+    document.getElementById('pageNow').textContent = current + 1;
+    document.getElementById('btnPrev').disabled = current === 0;
+    document.getElementById('btnFirst').disabled = current === 0;
+    document.getElementById('btnNext').disabled = current === pages.length - 1;
+  }
+
+  document.getElementById('btnFirst').addEventListener('click', () => goTo(0));
+  document.getElementById('btnPrev').addEventListener('click', () => goTo(current - 1));
+  document.getElementById('btnNext').addEventListener('click', () => goTo(current + 1));
+  document.getElementById('btnToc').addEventListener('click', () => goTo(1));
+
+  document.querySelectorAll('[data-goto]').forEach(el => {
+    el.addEventListener('click', () => goTo(parseInt(el.dataset.goto, 10)));
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') goTo(current + 1);
+    if (e.key === 'ArrowLeft') goTo(current - 1);
+  });
+
+  const stage = document.getElementById('stage');
+  let touchStartX = null;
+  stage.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, {passive:true});
+  stage.addEventListener('touchend', (e) => {
+    if (touchStartX === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { if (dx < 0) goTo(current + 1); else goTo(current - 1); }
+    touchStartX = null;
+  }, {passive:true});
+
+  document.getElementById('tocSearch').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('.toc-row').forEach(row => {
+      const txt = row.textContent.toLowerCase();
+      row.style.display = (q === '' || txt.includes(q)) ? '' : 'none';
+    });
+  });
+
+  updateChrome();
+})();
+</script>
+
+<script>
+(function(){
+  const PAPER = '#f4eeda';
+
+  /* ---------- LCG ---------- */
+  const lcgCanvas = document.getElementById('lcgCanvas');
+  const lcgCtx = lcgCanvas.getContext('2d');
+  function runLCG(){
+    const a = parseFloat(document.getElementById('lcgA').value) || 0;
+    const c = parseFloat(document.getElementById('lcgC').value) || 0;
+    const m = parseFloat(document.getElementById('lcgM').value) || 1;
+    let x = parseFloat(document.getElementById('lcgSeed').value) || 1;
+    const w = lcgCanvas.width, h = lcgCanvas.height;
+    lcgCtx.fillStyle = PAPER; lcgCtx.fillRect(0, 0, w, h);
+    lcgCtx.strokeStyle = '#d8cba9'; lcgCtx.strokeRect(0.5, 0.5, w - 1, h - 1);
+    const seq = [];
+    for (let i = 0; i < 601; i++){ x = (a * x + c) % m; if (x < 0) x += m; seq.push(x / m); }
+    lcgCtx.fillStyle = 'rgba(61,90,128,0.6)';
+    for (let i = 0; i < seq.length - 1; i++){
+      const px = seq[i] * (w - 16) + 8;
+      const py = h - (seq[i + 1] * (h - 16) + 8);
+      lcgCtx.fillRect(px, py, 2.4, 2.4);
+    }
+    document.getElementById('lcgReadout').textContent = 'Primeros valores: ' + seq.slice(0, 6).map(v => v.toFixed(3)).join(', ') + ' …';
+  }
+  document.getElementById('lcgRun').addEventListener('click', runLCG);
+  runLCG();
+
+  /* ---------- Cola ---------- */
+  const queueCanvas = document.getElementById('queueCanvas');
+  const queueCtx = queueCanvas.getContext('2d');
+  const queueToggle = document.getElementById('queueToggle');
+  let queueRunning = false, queue = [], serverBusy = false, arrivalTimer = 0.5, serviceTimer = 0, servedCount = 0;
+  function drawQueue(){
+    const w = queueCanvas.width, h = queueCanvas.height;
+    queueCtx.fillStyle = PAPER; queueCtx.fillRect(0, 0, w, h);
+    queueCtx.strokeStyle = '#d8cba9'; queueCtx.strokeRect(0.5, 0.5, w - 1, h - 1);
+    const serverX = w - 90, serverY = h / 2;
+    queueCtx.strokeStyle = '#a13a3a'; queueCtx.lineWidth = 2;
+    queueCtx.strokeRect(serverX - 24, serverY - 24, 48, 48);
+    queueCtx.fillStyle = '#5c5646'; queueCtx.font = '11px IBM Plex Mono, monospace';
+    queueCtx.fillText('servidor', serverX - 27, serverY + 40);
+    queueCtx.fillStyle = '#2f4d6b';
+    queue.forEach((cust, i) => {
+      const cx = 40 + i * 26;
+      if (cx < serverX - 60){ queueCtx.beginPath(); queueCtx.arc(cx, serverY, 8, 0, Math.PI * 2); queueCtx.fill(); }
+    });
+    if (serverBusy){ queueCtx.fillStyle = '#3f6a59'; queueCtx.beginPath(); queueCtx.arc(serverX, serverY, 9, 0, Math.PI * 2); queueCtx.fill(); }
+  }
+  function stepQueue(dt){
+    arrivalTimer -= dt;
+    if (arrivalTimer <= 0){ const lambda = parseFloat(document.getElementById('queueLambda').value); queue.push({}); arrivalTimer = -Math.log(1 - Math.random()) / lambda; }
+    if (!serverBusy && queue.length > 0){ queue.shift(); serverBusy = true; const mu = parseFloat(document.getElementById('queueMu').value); serviceTimer = -Math.log(1 - Math.random()) / mu; }
+    if (serverBusy){ serviceTimer -= dt; if (serviceTimer <= 0){ serverBusy = false; servedCount++; } }
+    document.getElementById('queueReadout').textContent = 'En cola: ' + queue.length + ' · Atendidos: ' + servedCount;
+    drawQueue();
+  }
+  queueToggle.addEventListener('click', () => { queueRunning = !queueRunning; queueToggle.textContent = queueRunning ? 'Pausar' : 'Reanudar'; });
+  drawQueue();
+
+  /* ---------- Caminata ---------- */
+  const walkCanvas = document.getElementById('walkCanvas');
+  const walkCtx = walkCanvas.getContext('2d');
+  const walkToggle = document.getElementById('walkToggle');
+  let walkRunning = false, agents = [], walkSteps = 0;
+  function resetAgents(){
+    const n = parseInt(document.getElementById('walkCount').value, 10);
+    agents = [];
+    for (let i = 0; i < n; i++){ agents.push({ x: walkCanvas.width / 2, y: walkCanvas.height / 2, hue: 25 + Math.random() * 20 }); }
+    walkSteps = 0;
+  }
+  function drawWalkBase(){
+    walkCtx.fillStyle = PAPER; walkCtx.fillRect(0, 0, walkCanvas.width, walkCanvas.height);
+    walkCtx.strokeStyle = '#d8cba9'; walkCtx.strokeRect(0.5, 0.5, walkCanvas.width - 1, walkCanvas.height - 1);
+  }
+  function stepWalk(){
+    const speed = parseFloat(document.getElementById('walkSpeed').value);
+    walkCtx.fillStyle = 'rgba(244,238,218,0.18)'; walkCtx.fillRect(0, 0, walkCanvas.width, walkCanvas.height);
+    agents.forEach(agent => {
+      agent.x += (Math.random() - 0.5) * speed * 6; agent.y += (Math.random() - 0.5) * speed * 6;
+      agent.x = Math.max(6, Math.min(walkCanvas.width - 6, agent.x)); agent.y = Math.max(6, Math.min(walkCanvas.height - 6, agent.y));
+      walkCtx.fillStyle = 'hsla(' + agent.hue + ', 55%, 38%, 0.85)'; walkCtx.beginPath(); walkCtx.arc(agent.x, agent.y, 4, 0, Math.PI * 2); walkCtx.fill();
+    });
+    walkSteps++;
+    document.getElementById('walkReadout').textContent = 'Pasos simulados: ' + walkSteps;
+  }
+  walkToggle.addEventListener('click', () => { if (!walkRunning) resetAgents(); walkRunning = !walkRunning; walkToggle.textContent = walkRunning ? 'Pausar' : 'Reiniciar'; });
+  document.getElementById('walkCount').addEventListener('change', () => { if (!walkRunning) resetAgents(); });
+  resetAgents(); drawWalkBase();
+  agents.forEach(agent => { walkCtx.fillStyle = 'hsla(' + agent.hue + ', 55%, 38%, 0.85)'; walkCtx.beginPath(); walkCtx.arc(agent.x, agent.y, 4, 0, Math.PI * 2); walkCtx.fill(); });
+
+  /* ---------- Tanque ---------- */
+  const tankCanvas = document.getElementById('tankCanvas');
+  const tankCtx = tankCanvas.getContext('2d');
+  const tankToggle = document.getElementById('tankToggle');
+  let tankRunning = false, tankLevel = 35;
+  function drawTank(){
+    const w = tankCanvas.width, h = tankCanvas.height;
+    tankCtx.fillStyle = PAPER; tankCtx.fillRect(0, 0, w, h);
+    const tankX = w / 2 - 70, tankY = 20, tankW = 140, tankH = h - 48;
+    tankCtx.strokeStyle = '#5c5646'; tankCtx.lineWidth = 2.5; tankCtx.strokeRect(tankX, tankY, tankW, tankH);
+    const fillH = (tankLevel / 100) * (tankH - 6);
+    tankCtx.fillStyle = 'rgba(47,77,107,0.55)'; tankCtx.fillRect(tankX + 3, tankY + tankH - fillH - 3, tankW - 6, fillH);
+    tankCtx.fillStyle = '#5c5646'; tankCtx.font = '11px IBM Plex Mono, monospace';
+    tankCtx.fillText('entrada →', tankX - 66, tankY + 16);
+    tankCtx.fillText('→ salida', tankX + tankW + 6, tankY + tankH - 10);
+    document.getElementById('tankReadout').textContent = 'Nivel: ' + Math.round(tankLevel) + '%';
+  }
+  function stepTank(dt){
+    const tin = parseFloat(document.getElementById('tankIn').value);
+    const tout = parseFloat(document.getElementById('tankOut').value);
+    tankLevel += (tin - tout) * dt * 2.2;
+    tankLevel = Math.max(0, Math.min(100, tankLevel));
+    drawTank();
+  }
+  tankToggle.addEventListener('click', () => { tankRunning = !tankRunning; tankToggle.textContent = tankRunning ? 'Pausar' : 'Reanudar'; });
+  drawTank();
+
+  /* ---------- Monte Carlo π ---------- */
+  const mcCanvas = document.getElementById('mcCanvas');
+  const mcCtx = mcCanvas.getContext('2d');
+  const mcToggle = document.getElementById('mcToggle');
+  const mcResetBtn = document.getElementById('mcReset');
+  let mcRunning = false, mcInside = 0, mcTotal = 0;
+  let mcCx, mcCy, mcHalf;
+
+  function mcDrawBase(){
+    const w = mcCanvas.width, h = mcCanvas.height;
+    mcCtx.fillStyle = PAPER; mcCtx.fillRect(0, 0, w, h);
+    const side = Math.min(w, h) - 30;
+    mcHalf = side / 2; mcCx = w / 2; mcCy = h / 2;
+    mcCtx.strokeStyle = '#5c5646'; mcCtx.lineWidth = 1.5;
+    mcCtx.strokeRect(mcCx - mcHalf, mcCy - mcHalf, side, side);
+    mcCtx.beginPath(); mcCtx.arc(mcCx, mcCy, mcHalf, 0, Math.PI * 2); mcCtx.stroke();
+  }
+
+  function mcReset(){
+    mcInside = 0; mcTotal = 0;
+    mcDrawBase();
+    document.getElementById('mcReadout').textContent = 'Dardos: 0 · π ≈ —';
+  }
+
+  function stepMonteCarlo(){
+    const rate = parseInt(document.getElementById('mcRate').value, 10);
+    for (let i = 0; i < rate; i++){
+      const x = Math.random() * 2 - 1, y = Math.random() * 2 - 1;
+      const inside = (x * x + y * y) <= 1;
+      mcTotal++; if (inside) mcInside++;
+      const px = mcCx + x * mcHalf, py = mcCy - y * mcHalf;
+      mcCtx.fillStyle = inside ? 'rgba(63,106,89,0.65)' : 'rgba(161,58,58,0.6)';
+      mcCtx.fillRect(px - 1.4, py - 1.4, 2.8, 2.8);
+    }
+    const piEst = mcTotal > 0 ? (4 * mcInside / mcTotal) : 0;
+    document.getElementById('mcReadout').textContent = 'Dardos: ' + mcTotal + ' · π ≈ ' + piEst.toFixed(4);
+  }
+
+  mcToggle.addEventListener('click', () => { mcRunning = !mcRunning; mcToggle.textContent = mcRunning ? 'Pausar' : 'Reanudar'; });
+  mcResetBtn.addEventListener('click', () => { mcRunning = false; mcToggle.textContent = 'Iniciar'; mcReset(); });
+  mcReset();
+
+  /* ---------- Bucle compartido ---------- */
+  let lastTime = null;
+  function tick(timestamp){
+    if (lastTime === null) lastTime = timestamp;
+    const dt = Math.min((timestamp - lastTime) / 1000, 0.25);
+    lastTime = timestamp;
+    if (queueRunning) stepQueue(dt);
+    if (walkRunning) stepWalk();
+    if (tankRunning) stepTank(dt);
+    if (mcRunning) stepMonteCarlo();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+
+</body>
+</html>
