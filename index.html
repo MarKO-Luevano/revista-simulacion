@@ -1450,6 +1450,32 @@ end</div>
   }
   requestAnimationFrame(tick);
 })();
+// PEGA ESTO EXACTAMENTE EN LA LÍNEA 1452:
+
+const divAutoevaluacion = document.createElement('div');
+divAutoevaluacion.innerHTML = `
+<div class="pagina-autoevaluacion" style="max-width: 800px; margin: 60px auto; padding: 40px; background-color: #F5F2E9; border: 1px solid #d8cba9; box-shadow: inset 0 0 0 1px #d8cba9; font-family: sans-serif;">
+    <span style="font-family: serif; font-size: 0.9rem; letter-spacing: 2px; color: #8b2619; text-transform: uppercase; display: block; margin-bottom: 5px;">Rúbrica</span>
+    <h2 style="font-family: 'Arial Condensed', sans-serif; font-size: 2.5rem; text-transform: uppercase; font-weight: bold; margin-top: 0; margin-bottom: 30px; letter-spacing: 1px; color: #1a1a1a;">Autoevaluación</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #FAF8F5;">
+        <thead>
+            <tr style="border-bottom: 2px solid #1a1a1a;">
+                <th style="text-align: left; padding: 12px 15px; font-family: sans-serif; font-weight: bold; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; color: #1a1a1a;">Estudiante</th>
+                <th style="text-align: right; padding: 12px 15px; font-family: sans-serif; font-weight: bold; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; width: 120px; color: #1a1a1a;">Calificación</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="border-bottom: 1px solid #d8cba9;">
+                <td style="padding: 15px; font-size: 1.1rem; color: #2c2c2c; font-weight: 500;">Perez Luevano Marco Antonio</td>
+                <td style="padding: 15px; text-align: right; font-size: 1.2rem; font-weight: bold; color: #8b2619;">100</td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="margin-top: 30px; font-style: italic; color: #666; font-size: 0.9rem; text-align: justify; line-height: 1.5;">
+        Nota: Se asigna el puntaje máximo en consideración al cumplimiento total de los requisitos del proyecto, el desarrollo de las 21 fichas de software, la implementación de los laboratorios interactivos y la correcta maquetación del material de apoyo.
+    </p>
+</div>`;
+document.body.appendChild(divAutoevaluacion);
 </script>
 
 </body>
