@@ -1293,7 +1293,7 @@ end</div>
     lcgCtx.strokeStyle = '#d8cba9'; lcgCtx.strokeRect(0.5, 0.5, w - 1, h - 1);
     const seq = [];
     for (let i = 0; i < 601; i++){ x = (a * x + c) % m; if (x < 0) x += m; seq.push(x / m); }
-    lcgCtx.fillStyle = 'rgba(61,90,128,0.6)';
+    lcgCtx.fillStyle = 'black';
     for (let i = 0; i < seq.length - 1; i++){
       const px = seq[i] * (w - 16) + 8;
       const py = h - (seq[i + 1] * (h - 16) + 8);
